@@ -1,2 +1,3 @@
-# TwitchBot
-My Twitch integration/chat bot.
+# Twitch Bot
+
+My Twitch integration and chat bot.
