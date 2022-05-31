@@ -6,8 +6,11 @@ namespace TwitchBot {
 			Shared.ApplicationDataDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), Config.ApplicationDataDirectory );
 			Shared.UserSecrets = UserSecrets.Load();
 
-			//UserAccessToken userAccessToken = await UserAccessToken.Fetch();
-			//Console.WriteLine( userAccessToken.AccessToken );
+			UserAccessToken userAccessToken = await UserAccessToken.Fetch();
+			Console.WriteLine( userAccessToken.AccessToken );
+			Console.WriteLine( userAccessToken.RefreshToken );
+			Console.WriteLine( userAccessToken.Expires );
+			Console.WriteLine( userAccessToken.TokenType );
 		}
 	}
 }

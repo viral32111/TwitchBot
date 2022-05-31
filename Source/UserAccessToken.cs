@@ -1,9 +1,9 @@
-﻿using System.Text;
+﻿using System.Collections.Specialized;
 using System.Net;
-using System.Web;
-using System.Collections.Specialized;
-using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
 using System.Text.Json;
+using System.Web;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace TwitchBot {
 	public enum TokenType {
@@ -11,10 +11,9 @@ namespace TwitchBot {
 		Bearer = 1
 	}
 
-	[Serializable]
 	public class UserAccessToken {
-		[NonSerialized]
 		private static readonly HttpListener redirectListener = new();
+		private static readonly string saveFileName = "UserAccessToken.json";
 
 		public string AccessToken = string.Empty;
 		public string RefreshToken = string.Empty;
@@ -33,47 +32,54 @@ namespace TwitchBot {
 			Expires = new DateTimeOffset( DateTime.UtcNow ).AddSeconds( expiresIn );
 		}
 
-		public async void Save() {
-			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) Directory.CreateDirectory( Shared.ApplicationDataDirectory );
-
-			string userAccessTokenPath = Path.Combine( Shared.ApplicationDataDirectory, "UserAccessToken.json" );
-
-			string userAccessTokenJSON = JsonSerializer.Serialize( this, new JsonSerializerOptions() {
-				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-				WriteIndented = true,
-				MaxDepth = 1
-			} );
-
-			await File.WriteAllTextAsync( userAccessTokenPath, userAccessTokenJSON );
-		}
-
-		/*public static async Task<UserAccessToken> Fetch() {
+		public static async Task<UserAccessToken> Fetch() {
 			UserAccessToken userAccessToken;
 
 			try {
+				userAccessToken = await Load();
+			} catch ( Exception exception ) {
+				Console.WriteLine( $"Failed to load user access token: '{exception.Message}'.\nRequesting a fresh user access token...\n" );
 
+				userAccessToken = await RequestUserAuthorization();
 			}
-		}*/
-
-		public static async Task<UserAccessToken> GetSaved() {
-			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) throw new Exception( "Application data directory does not exist." );
-
-			string userAccessTokenPath = Path.Combine( Shared.ApplicationDataDirectory, "UserAccessToken.json" );
-
-			if ( !File.Exists( userAccessTokenPath ) ) throw new Exception( "User access token JSON file does not exist." );
-
-			string fileContent = await File.ReadAllTextAsync( userAccessTokenPath );
-
-			UserAccessToken? userAccessToken = JsonSerializer.Deserialize<UserAccessToken>( fileContent, new JsonSerializerOptions() {
-				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-			} );
-
-			if ( userAccessToken == null ) throw new Exception( "Failed to deseralize user access token." );
 
 			return userAccessToken;
 		}
 
-		public static async Task<UserAccessToken> Request() {
+		private static async Task Save( JsonDocument document ) {
+			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) Directory.CreateDirectory( Shared.ApplicationDataDirectory );
+			string documentPath = Path.Combine( Shared.ApplicationDataDirectory, saveFileName );
+
+			string documentJson = JsonSerializer.Serialize( document, new JsonSerializerOptions() {
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				PropertyNameCaseInsensitive = false,
+				WriteIndented = true
+			} );
+
+			await File.WriteAllTextAsync( documentPath, documentJson );
+
+			Console.WriteLine( "Saved the user access token response." );
+		}
+
+		private static async Task<UserAccessToken> Load() {
+			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) throw new Exception( "Application data directory does not exist" );
+			string documentPath = Path.Combine( Shared.ApplicationDataDirectory, saveFileName );
+
+			if ( !File.Exists( documentPath ) ) throw new Exception( "User access token file does not exist" );
+			string fileContent = await File.ReadAllTextAsync( documentPath );
+
+			UserAccessToken userAccessToken;
+			using ( FileStream fileStream = File.Open( documentPath, FileMode.Open, FileAccess.Read, FileShare.None ) ) {
+				JsonDocument document = await JsonDocument.ParseAsync( fileStream );
+				userAccessToken = ReadDocumentValues( document );
+			}
+
+			if ( userAccessToken.Expires >= DateTime.UtcNow ) throw new Exception( "Saved token has expired" );
+
+			return userAccessToken;
+		}
+
+		private static async Task<UserAccessToken> RequestUserAuthorization() {
 			string stateSecret = Shared.GenerateRandomString( 16 );
 			string[] scopes = { "chat:read", "chat:edit" };
 
@@ -97,11 +103,13 @@ namespace TwitchBot {
 			authorizationTask.Wait(); // await .WaitAsync()?
 
 			string? authorizationCode = authorizationTask.Result;
-			if ( string.IsNullOrEmpty( authorizationCode ) ) throw new Exception( "Authorization code is null or empty." );
+			if ( string.IsNullOrEmpty( authorizationCode ) ) throw new Exception( "Authorization code is null or empty" );
 
 			Console.WriteLine( "The authorization has completed. Requesting user access token..." );
+			UserAccessToken userAccessToken = await RequestUserAccessToken( authorizationCode );
+			Console.WriteLine( "Received the user access token." );
 
-			return await RequestUserAccessToken( authorizationCode );
+			return userAccessToken;
 		}
 
 		private static async Task<string?> HandleAuthorizationRedirects( string stateSecret, string[] requestedScopes ) {
@@ -182,26 +190,34 @@ namespace TwitchBot {
 		}
 
 		private static async Task<UserAccessToken> RequestUserAccessToken( string authorizationCode ) {
-			HttpResponseMessage response = await Shared.httpClient.PostAsync( $"{Config.OAuthBaseURI}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+			HttpResponseMessage tokenResponse = await Shared.httpClient.PostAsync( $"{Config.OAuthBaseURI}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
 				{ "client_id", Shared.UserSecrets.AppClientIdentifier },
 				{ "client_secret", Shared.UserSecrets.AppClientSecret },
 				{ "code", authorizationCode },
-				{ "grant_type", "client_credentials" },
+				{ "grant_type", "authorization_code" },
 				{ "redirect_uri", Config.OAuthRedirectURI },
 			} ) );
 
-			Stream responseStream = await response.Content.ReadAsStreamAsync();
+			Stream responseStream = await tokenResponse.Content.ReadAsStreamAsync();
 			JsonDocument responseDocument = await JsonDocument.ParseAsync( responseStream );
 
-			string? accessToken = responseDocument.RootElement.GetProperty( "access_token" ).GetString();
-			string? refreshToken = responseDocument.RootElement.GetProperty( "refresh_token" ).GetString();
-			string? tokenType = responseDocument.RootElement.GetProperty( "token_type" ).GetString();
-			int expiresIn = responseDocument.RootElement.GetProperty( "expires_in" ).GetInt32(); // Seconds
+			UserAccessToken userAccessToken = ReadDocumentValues( responseDocument );
 
-			if ( string.IsNullOrEmpty( accessToken ) ) throw new Exception( "No access token found in response." );
-			if ( string.IsNullOrEmpty( refreshToken ) ) throw new Exception( "No refresh token found in response." );
-			if ( string.IsNullOrEmpty( tokenType ) ) throw new Exception( "No token type found in response." );
-			if ( expiresIn <= 0 ) throw new Exception( "Invalid expiry time found in response." );
+			await Save( responseDocument );
+
+			return userAccessToken;
+		}
+
+		private static UserAccessToken ReadDocumentValues( JsonDocument document ) {
+			string? accessToken = document.RootElement.GetProperty( "access_token" ).GetString();
+			string? refreshToken = document.RootElement.GetProperty( "refresh_token" ).GetString();
+			string? tokenType = document.RootElement.GetProperty( "token_type" ).GetString();
+			int expiresIn = document.RootElement.GetProperty( "expires_in" ).GetInt32(); // Seconds
+
+			if ( string.IsNullOrEmpty( accessToken ) ) throw new Exception( "No access token found in response" );
+			if ( string.IsNullOrEmpty( refreshToken ) ) throw new Exception( "No refresh token found in response" );
+			if ( string.IsNullOrEmpty( tokenType ) ) throw new Exception( "No token type found in response" );
+			if ( expiresIn <= 0 ) throw new Exception( "Invalid expiry time found in response" );
 
 			return new UserAccessToken( accessToken, refreshToken, tokenType, expiresIn );
 		}
