@@ -6,6 +6,7 @@ namespace TwitchBot {
 	public class UserSecrets {
 		public string AppClientIdentifier = string.Empty;
 		public string AppClientSecret = string.Empty;
+		public string AccountName = string.Empty;
 
 		public static UserSecrets Load() {
 			ConfigurationBuilder configurationBuilder = new();
@@ -15,7 +16,8 @@ namespace TwitchBot {
 
 			return new UserSecrets() {
 				AppClientIdentifier = configuration[ "AppClientIdentifier" ],
-				AppClientSecret = configuration[ "AppClientSecret" ]
+				AppClientSecret = configuration[ "AppClientSecret" ],
+				AccountName = configuration[ "AccountName" ]
 			};
 		}
 	}

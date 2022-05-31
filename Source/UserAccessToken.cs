@@ -66,7 +66,6 @@ namespace TwitchBot {
 			string documentPath = Path.Combine( Shared.ApplicationDataDirectory, saveFileName );
 
 			if ( !File.Exists( documentPath ) ) throw new Exception( "User access token file does not exist" );
-			string fileContent = await File.ReadAllTextAsync( documentPath );
 
 			UserAccessToken userAccessToken;
 			using ( FileStream fileStream = File.Open( documentPath, FileMode.Open, FileAccess.Read, FileShare.None ) ) {
@@ -74,7 +73,10 @@ namespace TwitchBot {
 				userAccessToken = ReadDocumentValues( document );
 			}
 
-			if ( userAccessToken.Expires >= DateTime.UtcNow ) throw new Exception( "Saved token has expired" );
+			// TODO: https://dev.twitch.tv/docs/authentication/refresh-tokens
+			if ( DateTime.UtcNow >= userAccessToken.Expires ) throw new Exception( "Saved token has expired" );
+
+			// TODO: https://dev.twitch.tv/docs/authentication/validate-tokens
 
 			return userAccessToken;
 		}
