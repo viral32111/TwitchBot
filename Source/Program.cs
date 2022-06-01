@@ -4,16 +4,28 @@ using System.Text;
 
 namespace TwitchBot {
 	public class Program {
+		private static readonly ChatClient chatClient = new();
+		private static UserAccessToken? userAccessToken;
+
 		public static async Task Main( string[] arguments ) {
 			Shared.ApplicationDataDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), Config.ApplicationDataDirectory );
 			Shared.UserSecrets = UserSecrets.Load();
 
-			UserAccessToken userAccessToken = await UserAccessToken.Fetch();
+			userAccessToken = await UserAccessToken.Fetch();
 
-			ChatClient chatClient = new();
+			chatClient.OnConnect += OnConnect;
+			//chatClient.OnMessageReceive += OnMessageReceive;
+			
 			await chatClient.Connect( Config.ChatServerURI );
-			await chatClient.RequestCapabilities( new string[] { "twitch.tv/commands", "twitch.tv/tags", "twitch.tv/membership" } );
-			await chatClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
+		}
+
+		private static async Task OnConnect( object sender, OnConnectEventArgs eventArgs ) {
+			if ( userAccessToken == null ) throw new Exception( "Connect called without having fetched user access token" );
+
+			bool hasCapabilities = await chatClient.RequestCapabilities( new string[] { "twitch.tv/commands", "twitch.tv/tags", "twitch.tv/membership" } );
+			bool isAuthenticated = await chatClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
+
+			//await chatClient.JoinChannel( "streamer chat channel" );
 		}
 	}
 }
