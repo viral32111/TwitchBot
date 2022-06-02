@@ -6,6 +6,17 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace TwitchBot {
+	public static class MessageTemplate {
+		public static readonly string RequestCapabilities = "CAP REQ :{0}";
+
+		public static readonly string AuthenticateName = "NICK {0}";
+		public static readonly string AuthenticateToken = "PASS oauth:{0}";
+
+		public static readonly string JoinChannel = "JOIN {0}";
+		public static readonly string SendMessage = "PRIVMSG {0} :{1}";
+		//public static readonly string SendReply = "@reply-parent-msg-id={0} PRIVMSG {1} :{2}";
+	}
+
 	public class OnConnectEventArgs {
 		//public WebSocketState State;
 	}
@@ -23,6 +34,7 @@ namespace TwitchBot {
 
 		//private Task? receiveTask;
 		private TaskCompletionSource<string> capabilitiesAcknowledgement = new();
+		private TaskCompletionSource<string> authenticationAcknowledgement = new();
 
 		public delegate Task OnConnectHandler( object sender, OnConnectEventArgs eventArgs );
 		public event OnConnectHandler? OnConnect;
@@ -31,7 +43,7 @@ namespace TwitchBot {
 		public event OnChannelMessageHandler? OnChannelMessage;
 
 		// on stream start/stop (change ig)
-		// on view count change
+		// on view count change (on viewer/user JOIN and PART - membership capability)
 		// on mod action (on user ban, on user timeout)
 		// on chat message sent
 		// on chat message delete (more of a mod action ig)
@@ -79,10 +91,15 @@ namespace TwitchBot {
 
 			await Send( $"CAP REQ :{ string.Join( ' ', capabilitiesRequested ) }" );
 
+			Console.WriteLine( "Waiting for capabilities acknowledgement..." );
 			string capabilitiesResponse = await capabilitiesAcknowledgement.Task;
-			capabilitiesGranted.AddRange( capabilitiesResponse.Split( ' ' ) );
+			Console.WriteLine( "Got capabilities acknowledgement: {0}", capabilitiesResponse );
 
-			if ( !capabilitiesGranted.SequenceEqual( capabilitiesRequested ) ) throw new Exception( "Granted capabilities does not match requested capabilities." );
+			capabilitiesGranted.AddRange( capabilitiesResponse.Split( ' ' ) );
+			Console.WriteLine( "Split capabilities string into list!" );
+
+			//if ( !capabilitiesGranted.SequenceEqual( capabilitiesRequested ) ) throw new Exception( "Granted capabilities does not match requested capabilities." );
+			//Console.WriteLine( "Capabilites match!" );
 
 			return capabilities;
 		}
@@ -96,13 +113,24 @@ namespace TwitchBot {
 			//string nickResponse = await Send( $"NICK {accountName}" );
 			string nickResponse = await Send( $"NICK {accountName}" );
 
+			Console.WriteLine( "Waiting for authentication response..." );
+			string authenticationResponse = await authenticationAcknowledgement.Task;
+			Console.WriteLine( "Got authentication response: '{0}'", authenticationResponse );
+
 			// Check response and see if its successful
 
 			return true; // placeholder
 		}
 
+		public async Task JoinChannel( string channelName ) {
+			await Send( $"JOIN #{channelName}" );
+
+			//await Send( $"PRIVMSG #{channelName} :@Nightbot u suck" );
+		}
+
 		private async Task<string> Send( string message ) {
 			await webSocketClient.SendAsync( Encoding.UTF8.GetBytes( message ), WebSocketMessageType.Text, true, cancellationTokenSource.Token );
+			Console.WriteLine( $"SENT: '{message}'" );
 
 			// I guess this should wait for a Receive() then decode & return it
 
@@ -127,11 +155,19 @@ namespace TwitchBot {
 							// Fire capabilities response event
 
 							//capabilitiesResponseTask.SetResult( message.Substring( ":tmi.twitch.tv CAP * ACK ".Length ).Split( ' ' ) );
+							Console.WriteLine( "Firing capabilities acknowledgement..." );
 							capabilitiesAcknowledgement.SetResult( message[ ":tmi.twitch.tv CAP * ACK ".Length.. ] );
+							Console.WriteLine( "Fired capabilities acknowledgement." );
+
+						// Login success
+						} else if ( message.StartsWith( ":tmi.twitch.tv 001 peeksabot :Welcome, GLHF!" ) ) {
+							authenticationAcknowledgement.SetResult( message );
 
 						} else {
-							Console.WriteLine( "Got unknown response: {0}", message );
+							Console.WriteLine( "Got unknown message: '{0}'", message );
 						}
+					} else {
+						Console.WriteLine( "Got unknown response: '{0}'", message );
 					}
 				} else {
 					Console.WriteLine( "Received ({0}): {1}, {2}, {3})", webSocketClient.State, result.MessageType, result.Count, result.CloseStatus );

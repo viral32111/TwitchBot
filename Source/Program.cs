@@ -30,7 +30,10 @@ namespace TwitchBot {
 			Shared.UserSecrets = UserSecrets.Load();
 
 			userAccessToken = await UserAccessToken.Fetch();
-			Console.WriteLine( "IsValid: {0}", await userAccessToken.IsValid() );
+			if ( ! await userAccessToken.IsValid() ) {
+				Console.WriteLine( "User access token is no longer valid. Refreshing..." );
+				await userAccessToken.Refresh();
+			}
 
 			chatClient.OnConnect += OnConnect;
 			//chatClient.OnMessageReceive += OnMessageReceive;
@@ -41,15 +44,18 @@ namespace TwitchBot {
 		private static async Task OnConnect( object sender, OnConnectEventArgs eventArgs ) {
 			if ( userAccessToken == null ) throw new Exception( "Connect called without having fetched user access token" );
 
-			await chatClient.RequestCapabilities( new Twitch.Capability[] {
+			/*await chatClient.RequestCapabilities( new Twitch.Capability[] {
 				Twitch.Capability.Commands,
 				Twitch.Capability.Membership,
 				Twitch.Capability.Tags
 			} );
 
+			Console.WriteLine( "RequestCapabilities() is done! Authenticating..." );*/
 			await chatClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
+			Console.WriteLine( "Authenticate() is done!" );
 
-			//await chatClient.JoinChannel( "streamer chat channel" );
+			Console.WriteLine( "\nJoining channel..." );
+			await chatClient.JoinChannel( "rawreltv" );
 		}
 	}
 }

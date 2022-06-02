@@ -30,6 +30,7 @@ namespace TwitchBot {
 				_ => TokenType.Unknown
 			};
 
+			// Should be based off when the token was last refreshed/granted, not the current datetime
 			Expires = new DateTimeOffset( DateTime.UtcNow ).AddSeconds( expiresIn );
 		}
 
@@ -53,6 +54,39 @@ namespace TwitchBot {
 			return false; // placeholder
 		}
 
+		// https://dev.twitch.tv/docs/authentication/refresh-tokens
+		public async Task Refresh() {
+			HttpResponseMessage tokenResponse = await Shared.httpClient.PostAsync( $"{Config.OAuthBaseURI}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+				{ "client_id", Shared.UserSecrets.AppClientIdentifier },
+				{ "client_secret", Shared.UserSecrets.AppClientSecret },
+				{ "grant_type", "refresh_token" },
+				{ "refresh_token", RefreshToken },
+			} ) );
+
+			Stream responseStream = await tokenResponse.Content.ReadAsStreamAsync();
+			JsonDocument responseDocument = await JsonDocument.ParseAsync( responseStream );
+
+			Console.WriteLine( tokenResponse.StatusCode );
+
+			string? accessToken = responseDocument.RootElement.GetProperty( "access_token" ).GetString();
+			string? refreshToken = responseDocument.RootElement.GetProperty( "refresh_token" ).GetString();
+			string? tokenType = responseDocument.RootElement.GetProperty( "token_type" ).GetString();
+
+			if ( string.IsNullOrEmpty( accessToken ) ) throw new Exception( "No access token found in refresh response" );
+			if ( string.IsNullOrEmpty( refreshToken ) ) throw new Exception( "No refresh token found in refresh response" );
+			if ( string.IsNullOrEmpty( tokenType ) ) throw new Exception( "No token type found in refresh response" );
+
+			Console.WriteLine( accessToken );
+			Console.WriteLine( refreshToken );
+			Console.WriteLine( tokenType );
+
+			AccessToken = accessToken;
+			RefreshToken = refreshToken;
+			// tokenType
+
+			// await Save()
+		}
+
 		public static async Task<UserAccessToken> Fetch() {
 			UserAccessToken userAccessToken;
 
@@ -67,6 +101,7 @@ namespace TwitchBot {
 			return userAccessToken;
 		}
 
+		// This really does need to save custom data instead of just the http response
 		private static async Task Save( JsonDocument document ) {
 			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) Directory.CreateDirectory( Shared.ApplicationDataDirectory );
 			string documentPath = Path.Combine( Shared.ApplicationDataDirectory, saveFileName );
@@ -94,10 +129,7 @@ namespace TwitchBot {
 				userAccessToken = ReadDocumentValues( document );
 			}
 
-			// TODO: https://dev.twitch.tv/docs/authentication/refresh-tokens
-			if ( DateTime.UtcNow >= userAccessToken.Expires ) throw new Exception( "Saved token has expired" );
-
-			// TODO: https://dev.twitch.tv/docs/authentication/validate-tokens
+			//if ( DateTime.UtcNow >= userAccessToken.Expires ) throw new Exception( "Saved token has expired" );
 
 			return userAccessToken;
 		}
@@ -240,7 +272,7 @@ namespace TwitchBot {
 			if ( string.IsNullOrEmpty( accessToken ) ) throw new Exception( "No access token found in response" );
 			if ( string.IsNullOrEmpty( refreshToken ) ) throw new Exception( "No refresh token found in response" );
 			if ( string.IsNullOrEmpty( tokenType ) ) throw new Exception( "No token type found in response" );
-			if ( expiresIn <= 0 ) throw new Exception( "Invalid expiry time found in response" );
+			//if ( expiresIn <= 0 ) throw new Exception( "Invalid expiry time found in response" );
 
 			return new UserAccessToken( accessToken, refreshToken, tokenType, expiresIn );
 		}
