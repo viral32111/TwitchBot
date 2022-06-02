@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Web;
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace TwitchBot {
@@ -30,6 +31,26 @@ namespace TwitchBot {
 			};
 
 			Expires = new DateTimeOffset( DateTime.UtcNow ).AddSeconds( expiresIn );
+		}
+
+		// https://dev.twitch.tv/docs/authentication/validate-tokens
+		public async Task<bool> IsValid() {
+			Shared.httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "OAuth", AccessToken );
+			HttpResponseMessage validateResponse = await Shared.httpClient.GetAsync( $"{Config.OAuthBaseURI}/validate" );
+
+			Stream responseStream = await validateResponse.Content.ReadAsStreamAsync();
+			JsonDocument responseDocument = await JsonDocument.ParseAsync( responseStream );
+
+			// todo: properly validate response body
+			if ( validateResponse.StatusCode == HttpStatusCode.OK ) {
+				// all is good, it do be valid
+				return true;
+			} else if ( validateResponse.StatusCode == HttpStatusCode.Unauthorized ) {
+				// it be invalid, possibly expired
+				return false;
+			}
+
+			return false; // placeholder
 		}
 
 		public static async Task<UserAccessToken> Fetch() {

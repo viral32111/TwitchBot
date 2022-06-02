@@ -22,6 +22,7 @@ namespace TwitchBot {
 		private readonly CancellationTokenSource cancellationTokenSource = new();
 
 		//private Task? receiveTask;
+		private TaskCompletionSource<string> capabilitiesAcknowledgement = new();
 
 		public delegate Task OnConnectHandler( object sender, OnConnectEventArgs eventArgs );
 		public event OnConnectHandler? OnConnect;
@@ -66,19 +67,33 @@ namespace TwitchBot {
 			return webSocketClient.State == WebSocketState.Closed;
 		}
 
-		// twitch.tv/commands twitch.tv/tags twitch.tv/membership
-		public async Task<bool> RequestCapabilities( string[] requestedCapabilities ) {
-			// automatically prepend twitch.tv/ to strings in requestedCapabilities array
-	
-			string capabilitiesResponse = await Send( $"CAP REQ :{ string.Join( ' ', requestedCapabilities ) }" );
+		public async Task<Twitch.Capability[]> RequestCapabilities( Twitch.Capability[] capabilities ) {
+			List<string> capabilitiesRequested = new(), capabilitiesGranted = new();
 
-			// Check response and see if it includes all the requested capabilities
+			foreach ( Twitch.Capability capability in capabilities ) capabilitiesRequested.Add( capability switch {
+				Twitch.Capability.Commands => "twitch.tv/commands",
+				Twitch.Capability.Membership => "twitch.tv/membership",
+				Twitch.Capability.Tags => "twitch.tv/tags",
+				_ => string.Empty
+			} );
 
-			return true; // placeholder
+			await Send( $"CAP REQ :{ string.Join( ' ', capabilitiesRequested ) }" );
+
+			string capabilitiesResponse = await capabilitiesAcknowledgement.Task;
+			capabilitiesGranted.AddRange( capabilitiesResponse.Split( ' ' ) );
+
+			if ( !capabilitiesGranted.SequenceEqual( capabilitiesRequested ) ) throw new Exception( "Granted capabilities does not match requested capabilities." );
+
+			return capabilities;
 		}
 
 		public async Task<bool> Authenticate( string accountName, string accessToken ) {
+			Console.WriteLine( "{0}, {1}", accountName, accessToken );
+
+			// :tmi.twitch.tv NOTICE * :Login authentication failed
+			//string passResponse = await Send( $"PASS oauth:{accessToken}" );
 			string passResponse = await Send( $"PASS oauth:{accessToken}" );
+			//string nickResponse = await Send( $"NICK {accountName}" );
 			string nickResponse = await Send( $"NICK {accountName}" );
 
 			// Check response and see if its successful
@@ -99,8 +114,32 @@ namespace TwitchBot {
 
 			while ( webSocketClient.State != WebSocketState.Closed ) {
 				WebSocketReceiveResult result = await webSocketClient.ReceiveAsync( receiveBuffer, cancellationTokenSource.Token );
-				Console.WriteLine( "Received ({0}, {1}, {2}, {3}): {4}", webSocketClient.State, result.MessageType, result.Count, result.CloseStatus, Encoding.UTF8.GetString( receiveBuffer ) );
+
+				if ( result.MessageType == WebSocketMessageType.Text ) {
+					string message = Encoding.UTF8.GetString( receiveBuffer );
+
+					if ( message.StartsWith( ":tmi.twitch.tv" ) ) {
+						Console.WriteLine( "Got twitch message" );
+
+						if ( message.StartsWith( ":tmi.twitch.tv CAP * ACK" ) ) {
+							Console.WriteLine( "Got capabilities response: {0}", message );
+
+							// Fire capabilities response event
+
+							//capabilitiesResponseTask.SetResult( message.Substring( ":tmi.twitch.tv CAP * ACK ".Length ).Split( ' ' ) );
+							capabilitiesAcknowledgement.SetResult( message[ ":tmi.twitch.tv CAP * ACK ".Length.. ] );
+
+						} else {
+							Console.WriteLine( "Got unknown response: {0}", message );
+						}
+					}
+				} else {
+					Console.WriteLine( "Received ({0}): {1}, {2}, {3})", webSocketClient.State, result.MessageType, result.Count, result.CloseStatus );
+				}
+
 				Array.Clear( receiveBuffer, 0, receiveBuffer.Length );
+
+
 
 				// somehow make this tie in with the latest Send() call
 			}
