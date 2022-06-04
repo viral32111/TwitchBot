@@ -1,61 +1,54 @@
-﻿using System;
-using System.Net.WebSockets;
-using System.Text;
-using Microsoft.Extensions.Logging;
-
-namespace TwitchBot {
+﻿namespace TwitchBot {
 	public class Program {
-		private static readonly ChatClient chatClient = new();
-		private static UserAccessToken? userAccessToken;
+		private static readonly Twitch.Client twitchClient = new();
+		private static UserAccessToken? userAccessToken = null;
 
 		public static async Task Main( string[] arguments ) {
-			//Logger.LogInformation( "Hello World!" );
 
-			/*using ( ILoggerFactory loggerFactory = LoggerFactory.Create( factoryBuilder => {
-				factoryBuilder.AddFilter( "System", LogLevel.Information );
-				factoryBuilder.AddConsole();
-			} ) ) {
-				ILogger logger = loggerFactory.CreateLogger<Program>();
-				logger.LogInformation( "Hello World!" );
-				logger.LogInformation( "Hello World!" );
-				logger.LogWarning( "Hello World!" );
-				logger.LogCritical( "Hello World!" );
-				logger.LogDebug( "Hello World!" );
-				logger.LogDebug( "Hello World!" );
-				logger.LogError( "Hello World!" );
-				logger.LogTrace( "Hello World!" );
-			}*/
-
+			// Set the persistent data directory
 			Shared.ApplicationDataDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), Config.ApplicationDataDirectory );
-			Shared.UserSecrets = UserSecrets.Load();
+			Log.Write( "Persistent data directory is: '{0}'.", Shared.ApplicationDataDirectory );
 
+			// Load .NET user secrets (application credentials)
+			Shared.UserSecrets = UserSecrets.Load();
+			Log.Write( "Loaded the user secrets for this application." );
+
+			// Fetch the user access token from disk, or request a new one
 			userAccessToken = await UserAccessToken.Fetch();
-			if ( ! await userAccessToken.IsValid() ) {
-				Console.WriteLine( "User access token is no longer valid. Refreshing..." );
+			Log.Write( "Fetched the user access token." );
+
+			// If the current access token is no longer valid, then refresh it
+			if ( !await userAccessToken.IsValid() ) {
+				Log.Write( "The user access token is no longer valid. Refreshing..." );
 				await userAccessToken.Refresh();
 			}
 
-			chatClient.OnConnect += OnConnect;
-			//chatClient.OnMessageReceive += OnMessageReceive;
-			
-			await chatClient.Connect( Config.ChatServerURI );
+			// Register event handlers for the Twitch client
+			twitchClient.OnConnect += OnConnect;
+			Log.Write( "Registered Twitch client event handlers." );
+
+			// Connect to Twitch chat
+			// NOTE: Blocks until the connection is closed
+			Log.Write( "Connecting to Twitch chat..." );
+			twitchClient.Connect( Config.ChatServerAddress, Config.ChatServerPort );
+
 		}
 
-		private static async Task OnConnect( object sender, OnConnectEventArgs eventArgs ) {
-			if ( userAccessToken == null ) throw new Exception( "Connect called without having fetched user access token" );
+		private static async Task OnConnect( object sender, EventArgs e ) {
+			if ( userAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
-			/*await chatClient.RequestCapabilities( new Twitch.Capability[] {
+			Log.Write( "Requesting capabilities..." );
+			await twitchClient.RequestCapabilities( new string[] {
 				Twitch.Capability.Commands,
 				Twitch.Capability.Membership,
 				Twitch.Capability.Tags
 			} );
 
-			Console.WriteLine( "RequestCapabilities() is done! Authenticating..." );*/
-			await chatClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
-			Console.WriteLine( "Authenticate() is done!" );
+			Log.Write( "Authenticating..." );
+			await twitchClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
 
-			Console.WriteLine( "\nJoining channel..." );
-			await chatClient.JoinChannel( "rawreltv" );
+			//Log.Write( "Joining channel '{0}'...", Config.ChannelName );
+			//Twitch.Channel channel = await twitchClient.JoinChannel( Config.ChannelName );
 		}
 	}
 }

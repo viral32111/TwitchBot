@@ -20,7 +20,12 @@ using System.Threading.Tasks;
 // Channels -> Messages -> Users
 
 namespace TwitchBot.Twitch {
-	public class User {
+	public class Channel {
+		public int? Identifier = null; // room-id=675961583;
+		public string? Name = null; // #rawreltv
+	}
+
+	/*public class User {
 		public string? Nick = null; // viral32111_
 		public string? User_ = null; // !viral32111_
 
@@ -34,18 +39,18 @@ namespace TwitchBot.Twitch {
 		public bool? IsTurbo = null; // turbo=0;
 		public string? BadgeInformation = null; // badge-info=;
 		public string? Badges = null; // badges=broadcaster/1;
-	}
+	}*/
 
-	public class Message {
+	/*public class Message {
 		public string? Server = null; // @viral32111_.tmi.twitch.tv
 
-		public string? Channel = null; // #rawreltv
+		//public string? Channel = null; // #rawreltv
 		public string? Content = null; // test
 
 		// Requires TAGS capability
 		public string? Identifier = null; // id=443d634f-ebf4-4cd7-8821-86fb8de658c5;
 		public bool? IsUsersFirstMessage = null; // first-msg=1;
-		public int? RoomIdentifier = null; // room-id=675961583;
+		//public int? RoomIdentifier = null; 
 		public int? SentAt = null; // tmi-sent-ts=1654201369060;
 		public string? Emotes = null; // emotes=62835:0-10;
 		public string? Flags = null; // flags=;
@@ -55,5 +60,5 @@ namespace TwitchBot.Twitch {
 		public string? ClientNonce = null; // client-nonce=48fd35da166cdc8f3cf897f867e2b6fe;
 
 		// reply-parent-msg-id=uuid-here;
-	}
+	}*/
 }
