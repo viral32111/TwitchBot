@@ -1,8 +1,8 @@
 # Twitch Bot
 
-This is my Twitch integration and chat bot, primarily made for [RawrelTV](https://www.twitch.tv/rawreltv).
+This is my Twitch integration and chat bot, primarily made for [Rawreltv](https://www.twitch.tv/rawreltv).
 
-It does not do much at the moment other than manage user access tokens, connect & authenticate to chat, etc., but I have lots of plans for it.
+Currently it is only able to manage user access tokens, connect to Twitch chat, request capabilities, and authenticate as the bot user. I am slowly working on implementing each part of the underlying protocol before working on any major features.
 
 ## License
 
