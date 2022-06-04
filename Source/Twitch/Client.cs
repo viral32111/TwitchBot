@@ -1,6 +1,6 @@
-﻿using System.Net.WebSockets;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
+using System.Net.WebSockets;
 
 // A client for connecting to Twitch chat
 // https://dev.twitch.tv/docs/irc

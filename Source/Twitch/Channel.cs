@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-// https://dev.twitch.tv/docs/irc/msg-id
+﻿// https://dev.twitch.tv/docs/irc/msg-id
 
 // https://dev.twitch.tv/docs/irc/tags
 

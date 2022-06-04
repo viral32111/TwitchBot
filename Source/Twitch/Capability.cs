@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-// Enumerations for Twitch-specific IRC capabilities
+﻿// Enumerations for Twitch-specific IRC capabilities
 // https://dev.twitch.tv/docs/irc/capabilities
 
 namespace TwitchBot.Twitch {
