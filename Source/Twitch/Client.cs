@@ -195,28 +195,41 @@ namespace TwitchBot.Twitch {
 					string receivedMessage = Encoding.UTF8.GetString( receiveBuffer );
 
 					InternetRelayChat.Message[] messages = InternetRelayChat.Message.Parse( receivedMessage );
+					List<InternetRelayChat.Message> ourMessages = new();
+
 					foreach ( InternetRelayChat.Message message in messages ) {
+
+						// https://dev.twitch.tv/docs/irc#keepalive-messages
+						if ( message.Command == InternetRelayChat.Command.Ping ) { // message.Host == null && 
+							await SendMessage( $"PONG :{message.Parameters}" );							
+							continue;
+						}
+
 						if ( message.Host == null || !message.Host.EndsWith( ExpectedHost ) ) throw new Exception( "Received message from foreign server" );
+
+						ourMessages.Add( message );
+
 					}
 
 					if ( responseSource != null ) {
-						responseSource.SetResult( messages );
+						responseSource.SetResult( ourMessages.ToArray() );
 						responseSource = null; // TODO: Is this needed? - It is done in the SendMessage function
 					} else {
-						foreach ( InternetRelayChat.Message message in messages ) {
-
-							if ( message.IsFor( Shared.UserSecrets.AccountName, ExpectedHost ) == true ) {
-								if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-									OnChannelJoin?.Invoke( this, new OnChannelJoinEventArgs( message.Parameters[ 1.. ] ) );
-								} else {
-									Console.WriteLine( "Unhandled command: '{0}'", message.ToString() );
-								}
+						foreach ( InternetRelayChat.Message message in ourMessages ) {
+							if ( message.IsServer( ExpectedHost ) ) {
+								Console.WriteLine( "Unhandled (server): '{0}'", message.ToString() );
 							} else {
-								Console.WriteLine( "Unhandled user: '{0}'", message.ToString() );
+								if ( message.IsFor( Shared.UserSecrets.AccountName, ExpectedHost ) == true ) {
+									if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
+										OnChannelJoin?.Invoke( this, new OnChannelJoinEventArgs( message.Parameters[ 1.. ] ) );
+									} else {
+										Console.WriteLine( "Unhandled (command): '{0}'", message.ToString() );
+									}
+								} else {
+									Console.WriteLine( "Unhandled (user): '{0}'", message.ToString() );
+								}
 							}
 						}
-						
-						//throw new Exception( "Received an unexpected message" );
 					}
 
 				} else {

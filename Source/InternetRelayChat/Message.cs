@@ -6,7 +6,7 @@
 
 namespace TwitchBot.InternetRelayChat {
 	public class Message {
-		private static readonly Regex Pattern = new( @"^(?>@(.+?) )?:(?>([\w.]+))?(?>!([\w.]+))?(?>@?([\w.]+)) (\d{3}|[A-Z]+)(?> \* ([A-Z]*))?(?> :?(?>\* )?(.+))?$" );
+		private static readonly Regex Pattern = new( @"^(?>@(.+?) )?(?>:(?>([\w.]+))?(?>!([\w.]+))?(?>@?([\w.]+)) )?(\d{3}|[A-Z]+)(?> \* ([A-Z]*))?(?> :?(?>\* )?(.+))?$" );
 
 		public Dictionary<string, string?>? Tags = null;
 
@@ -43,12 +43,16 @@ namespace TwitchBot.InternetRelayChat {
 			if ( !string.IsNullOrEmpty( parameters ) ) Parameters = parameters;
 		}
 
+		public bool IsServer( string host ) {
+			return Nick == null && User == null && Host == host;
+		}
+
 		public bool IsFor( string user, string host ) {
 			return Nick == user.ToLower() && User == user.ToLower() && Host == $"{user.ToLower()}.{host}";
 		}
 
 		public override string ToString() {
-			return $"{( Tags != null ? $"@{TagsToString()} " : "" )}:{( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host )} {Command} {Parameters}";
+			return $"{( Tags != null ? $"@{TagsToString()} " : "" )}{( Host != null ? ":" + ( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host ) + " " : "" )}{Command}{(Parameters != null ? " :" + Parameters : "")}";
 		}
 
 		public static Message[] Parse( string rawMessage ) {
