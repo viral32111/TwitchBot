@@ -6,5 +6,8 @@ namespace TwitchBot.Twitch {
 		// Sent after the bot authenticates with the server.
 		public static readonly string GlobalUserState = "GLOBALUSERSTATE";
 
+		// Sent to indicate the outcome of an action like banning a user.
+		public static readonly string Notice = "NOTICE";
+
 	}
 }

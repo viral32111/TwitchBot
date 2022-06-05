@@ -14,14 +14,26 @@
 			Shared.UserSecrets = UserSecrets.Load();
 			Log.Write( "Loaded the user secrets for this application." );
 
-			// Fetch the user access token from disk, or request a new one
-			userAccessToken = await UserAccessToken.Fetch();
-			Log.Write( "Fetched the user access token." );
+			// Attempt to load an existing user access token from disk
+			try {
+				userAccessToken = await UserAccessToken.Load();
 
-			// If the current access token is no longer valid, then refresh it
-			if ( !await userAccessToken.IsValid() ) {
-				Log.Write( "The user access token is no longer valid. Refreshing..." );
-				await userAccessToken.Refresh();
+				// If the token is no longer valid, then refresh & save it
+				if ( !await userAccessToken.IsValid() ) {
+					Log.Write( "The user access token is no longer valid. Refreshing it..." );
+					await userAccessToken.Refresh();
+
+					Log.Write( "Saving the updated user access token..." );
+					await userAccessToken.Save();
+				}
+
+			// If loading an existing token fails, then request & save a fresh one
+			} catch ( Exception exception ) {
+				Log.Write( "Failed to load the user access token: '{0}'. Requesting a new one...", exception.Message );
+				userAccessToken = await UserAccessToken.Request( new string[] { "chat:read", "chat:edit" } );
+
+				Log.Write( "Saving the new user access token..." );
+				await userAccessToken.Save();
 			}
 
 			// Register event handlers for the Twitch client

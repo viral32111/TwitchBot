@@ -6,14 +6,15 @@
 
 namespace TwitchBot.InternetRelayChat {
 	public class Message {
-		private static readonly Regex Pattern = new ( @"^(?>@(.+?) )?:([\w.]+) (\d{3}|[\w *]+)(?> :?(.+))?$" );
+		private static readonly Regex Pattern = new ( @"^(?>@(.+?) )?:([\w.]+) (\d{3}|[A-Z]+)(?> \* ([A-Z]*))?(?> :?(?>\* )?(.+))?$" );
 
 		public Dictionary<string, string?>? Tags = null;
 		public string? ServerName = null;
 		public string? Command = null;
+		public string? SubCommand = null;
 		public string? Parameters = null;
 
-		public Message( string tags, string serverName, string command, string parameters ) {
+		public Message( string tags, string serverName, string command, string subCommand, string parameters ) {
 			if ( !string.IsNullOrEmpty( tags ) ) {
 				Tags = new();
 
@@ -27,13 +28,14 @@ namespace TwitchBot.InternetRelayChat {
 				}
 			}
 
-			ServerName = ( string.IsNullOrEmpty( serverName ) ? null : serverName );
-			Command = ( string.IsNullOrEmpty( command ) ? null : command );
-			Parameters = ( string.IsNullOrEmpty( parameters ) ? null : parameters );
+			if ( !string.IsNullOrEmpty( serverName ) ) ServerName = serverName;
+			if ( !string.IsNullOrEmpty( command ) ) Command = command;
+			if ( !string.IsNullOrEmpty( subCommand ) ) SubCommand = subCommand;
+			if ( !string.IsNullOrEmpty( parameters ) ) Parameters = parameters;
 		}
 
 		public override string ToString() {
-			return $"{( Tags != null ? $"@{TagsToString()}" : "")} :{ServerName} {Command} {Parameters}";
+			return $"{( Tags != null ? $"@{TagsToString()} " : "")}:{ServerName} {Command} {Parameters}";
 		}
 
 		public static Message[] Parse( string rawMessage ) {
@@ -47,10 +49,11 @@ namespace TwitchBot.InternetRelayChat {
 				if ( !ircMatch.Success ) continue;
 
 				messages.Add( new Message(
-					ircMatch.Groups[ 1 ].Value,
-					ircMatch.Groups[ 2 ].Value,
-					ircMatch.Groups[ 3 ].Value,
-					ircMatch.Groups[ 4 ].Value
+					ircMatch.Groups[ 1 ].Value, // Tags
+					ircMatch.Groups[ 2 ].Value, // Server Name
+					ircMatch.Groups[ 3 ].Value, // Command
+					ircMatch.Groups[ 4 ].Value, // Sub-command
+					ircMatch.Groups[ 5 ].Value // Parameters
 				) );
 			}
 

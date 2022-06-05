@@ -81,12 +81,12 @@ namespace TwitchBot.Twitch {
 
 			// The Twitch authentication reply contains multiple messages
 			foreach ( InternetRelayChat.Message message in authResponses ) {
-				string? parameters = message.Parameters;
+				if ( message.Command == Command.Notice && message.Parameters == "Login authentication failed" ) throw new Exception( "Failed to authenticate" );
 
-				if ( !string.IsNullOrEmpty( parameters ) ) {
+				if ( !string.IsNullOrEmpty( message.Parameters ) ) {
 
 					// Remove the account name from the start of the parameters value
-					if ( parameters.StartsWith( $"{accountName.ToLower()} :" ) ) parameters = parameters[ ( accountName.Length + 2 ).. ];
+					string parameters = ( message.Parameters.StartsWith( $"{accountName.ToLower()} :" ) ? message.Parameters[ ( accountName.Length + 2 ).. ] : message.Parameters );
 
 					if ( message.Command == InternetRelayChat.Command.Welcome ) Log.Write( "The server welcomes us." );
 
