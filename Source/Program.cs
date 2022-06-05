@@ -38,6 +38,7 @@
 
 			// Register event handlers for the Twitch client
 			twitchClient.OnConnect += OnConnect;
+			twitchClient.OnChannelJoin += OnChannelJoin;
 			Log.Write( "Registered Twitch client event handlers." );
 
 			// Connect to Twitch chat
@@ -60,8 +61,12 @@
 			Log.Write( "Authenticating..." );
 			await twitchClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
 
-			//Log.Write( "Joining channel '{0}'...", Config.ChannelName );
-			//Twitch.Channel channel = await twitchClient.JoinChannel( Config.ChannelName );
+			Log.Write( "Joining channel '{0}'...", Config.ChannelName );
+			await twitchClient.JoinChannel( Config.ChannelName );
+		}
+
+		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinEventArgs e ) {
+			Log.Write( "Joined channel '{0}'.", e.ChannelName );
 		}
 	}
 }

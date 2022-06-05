@@ -10,5 +10,11 @@ namespace TwitchBot.InternetRelayChat {
 		public static readonly string MoTD = "372";
 		public static readonly string MoTDStart = "375";
 		public static readonly string MoTDEnd = "376";
+
+		public static readonly string Names = "353";
+		public static readonly string NamesEnd = "366";
+
+		public static readonly string Join = "JOIN";
+		public static readonly string Leave = "PART";
 	}
 }

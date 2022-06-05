@@ -6,15 +6,20 @@
 
 namespace TwitchBot.InternetRelayChat {
 	public class Message {
-		private static readonly Regex Pattern = new ( @"^(?>@(.+?) )?:([\w.]+) (\d{3}|[A-Z]+)(?> \* ([A-Z]*))?(?> :?(?>\* )?(.+))?$" );
+		private static readonly Regex Pattern = new( @"^(?>@(.+?) )?:(?>([\w.]+))?(?>!([\w.]+))?(?>@?([\w.]+)) (\d{3}|[A-Z]+)(?> \* ([A-Z]*))?(?> :?(?>\* )?(.+))?$" );
 
 		public Dictionary<string, string?>? Tags = null;
-		public string? ServerName = null;
+
+		public string? Nick = null;
+		public string? User = null;
+		public string? Host = null;
+
 		public string? Command = null;
 		public string? SubCommand = null;
+
 		public string? Parameters = null;
 
-		public Message( string tags, string serverName, string command, string subCommand, string parameters ) {
+		public Message( string tags, string nick, string user, string host, string command, string subCommand, string parameters ) {
 			if ( !string.IsNullOrEmpty( tags ) ) {
 				Tags = new();
 
@@ -28,14 +33,22 @@ namespace TwitchBot.InternetRelayChat {
 				}
 			}
 
-			if ( !string.IsNullOrEmpty( serverName ) ) ServerName = serverName;
+			if ( !string.IsNullOrEmpty( nick ) ) Nick = nick;
+			if ( !string.IsNullOrEmpty( user ) ) User = user;
+			if ( !string.IsNullOrEmpty( host ) ) Host = host;
+
 			if ( !string.IsNullOrEmpty( command ) ) Command = command;
 			if ( !string.IsNullOrEmpty( subCommand ) ) SubCommand = subCommand;
+
 			if ( !string.IsNullOrEmpty( parameters ) ) Parameters = parameters;
 		}
 
+		public bool IsFor( string user, string host ) {
+			return Nick == user.ToLower() && User == user.ToLower() && Host == $"{user.ToLower()}.{host}";
+		}
+
 		public override string ToString() {
-			return $"{( Tags != null ? $"@{TagsToString()} " : "")}:{ServerName} {Command} {Parameters}";
+			return $"{( Tags != null ? $"@{TagsToString()} " : "" )}:{( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host )} {Command} {Parameters}";
 		}
 
 		public static Message[] Parse( string rawMessage ) {
@@ -50,10 +63,15 @@ namespace TwitchBot.InternetRelayChat {
 
 				messages.Add( new Message(
 					ircMatch.Groups[ 1 ].Value, // Tags
-					ircMatch.Groups[ 2 ].Value, // Server Name
-					ircMatch.Groups[ 3 ].Value, // Command
-					ircMatch.Groups[ 4 ].Value, // Sub-command
-					ircMatch.Groups[ 5 ].Value // Parameters
+
+					ircMatch.Groups[ 2 ].Value, // Nick
+					ircMatch.Groups[ 3 ].Value, // User
+					ircMatch.Groups[ 4 ].Value, // Host
+
+					ircMatch.Groups[ 5 ].Value, // Command
+					ircMatch.Groups[ 6 ].Value, // Sub-Command
+
+					ircMatch.Groups[ 7 ].Value // Parameters
 				) );
 			}
 

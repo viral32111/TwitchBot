@@ -1,6 +1,6 @@
-﻿using System.Text;
+﻿using System.Net.WebSockets;
+using System.Text;
 using System.Text.RegularExpressions;
-using System.Net.WebSockets;
 
 // A client for connecting to Twitch chat
 // https://dev.twitch.tv/docs/irc
@@ -19,6 +19,24 @@ using System.Net.WebSockets;
 
 // await Send( $"PRIVMSG #{channelName} :@Nightbot u suck" );
 
+/*
+:peeksabot!peeksabot@peeksabot.tmi.twitch.tv JOIN #rawreltv
+:peeksabot.tmi.twitch.tv 353 peeksabot = #rawreltv :peeksabot
+:peeksabot.tmi.twitch.tv 366 peeksabot #rawreltv :End of /NAMES list
+@badge-info=;badges=;color=;display-name=PeeksaBot;emote-sets=0,300374282;mod=0;subscriber=0;user-type= :tmi.twitch.tv USERSTATE #rawreltv
+@emote-only=0;followers-only=-1;r9k=0;room-id=127154290;slow=0;subs-only=0 :tmi.twitch.tv ROOMSTATE #rawreltv
+
+:alienconglomeration!alienconglomeration@alienconglomeration.tmi.twitch.tv JOIN #rawreltv
+:0ax2!0ax2@0ax2.tmi.twitch.tv JOIN #rawreltv
+:anotherttvviewer!anotherttvviewer@anotherttvviewer.tmi.twitch.tv JOIN #rawreltv
+:metaviews!metaviews@metaviews.tmi.twitch.tv JOIN #rawreltv
+:nightbot!nightbot@nightbot.tmi.twitch.tv JOIN #rawreltv
+:mogulmail!mogulmail@mogulmail.tmi.twitch.tv JOIN #rawreltv
+:streamelements!streamelements@streamelements.tmi.twitch.tv JOIN #rawreltv
+:allroadsleadtothefarm!allroadsleadtothefarm@allroadsleadtothefarm.tmi.twitch.tv JOIN #rawreltv
+:farminggurl!farminggurl@farminggurl.tmi.twitch.tv JOIN #rawreltv
+*/
+
 namespace TwitchBot.Twitch {
 	public class Client {
 
@@ -28,18 +46,22 @@ namespace TwitchBot.Twitch {
 
 		// A completion source for responses to sent websocket messages
 		// NOTE: Should be null whenever a response is not expected
-		private TaskCompletionSource<string>? responseSource = null;
+		private TaskCompletionSource<InternetRelayChat.Message[]>? responseSource = null;
 
 		// Regular expression for matching the "Your Host" (004) post-authentication message
 		private readonly Regex HostPattern = new( @"^Your host is (.+)$" );
 
-		// The IRC-style Twitch server name that messages originate from
+		// The IRC-style Twitch host name that messages originate from
 		// NOTE: This changes later on once authentication completes and we are told what our host is
-		private string ServerName = "tmi.twitch.tv";
+		private string ExpectedHost = "tmi.twitch.tv";
 
 		// An event that is ran whenever a connection is established
 		public delegate Task OnConnectHandler( object sender, EventArgs e );
 		public event OnConnectHandler? OnConnect;
+
+		// An event that is ran whenever a channel is joined
+		public delegate Task OnChannelJoinHandler( object sender, OnChannelJoinEventArgs e );
+		public event OnChannelJoinHandler? OnChannelJoin;
 
 		// Synchronous function to connect to the websocket server, or timeout after a specified period
 		// NOTE: This blocks until the connection is over, which is intended behavior to keep the application running
@@ -77,8 +99,6 @@ namespace TwitchBot.Twitch {
 			InternetRelayChat.Message[]? authResponses = await SendMessage( $"NICK {accountName}" );
 			if ( authResponses == null ) throw new Exception( "Never received response for authentication" );
 
-			// TODO: Check for authentication failure (e.g., expired token)
-
 			// The Twitch authentication reply contains multiple messages
 			foreach ( InternetRelayChat.Message message in authResponses ) {
 				if ( message.Command == Command.Notice && message.Parameters == "Login authentication failed" ) throw new Exception( "Failed to authenticate" );
@@ -93,8 +113,8 @@ namespace TwitchBot.Twitch {
 					if ( message.Command == InternetRelayChat.Command.YourHost ) {
 						Match hostMatch = HostPattern.Match( parameters );
 						if ( hostMatch.Success ) {
-							ServerName = hostMatch.Groups[ 1 ].Value;
-							Log.Write( "The server name is: '{0}'", ServerName );
+							ExpectedHost = hostMatch.Groups[ 1 ].Value;
+							Log.Write( "The expected host is now: '{0}'", ExpectedHost );
 						}
 					}
 
@@ -132,6 +152,13 @@ namespace TwitchBot.Twitch {
 			}
 		}
 
+		public async Task JoinChannel( string channelName ) {
+			await SendMessage( $"JOIN #{channelName.ToLower()}", expectResponse: false );
+
+			// TODO: Check ':peeksabot!peeksabot@peeksabot.tmi.twitch.tv JOIN #rawreltv' response here & fire channel join event...?
+		}
+
+
 		// Asynchronous function to send messages to the websocket server
 		// NOTE: This is NOT to send messages to Twitch chat, see Channel.SendMessage() for that
 		private async Task<InternetRelayChat.Message[]?> SendMessage( string messageToSend, bool expectResponse = true ) {
@@ -145,37 +172,13 @@ namespace TwitchBot.Twitch {
 			await wsClient.SendAsync( Encoding.UTF8.GetBytes( messageToSend ), WebSocketMessageType.Text, true, CancellationToken.None );
 
 			if ( responseSource != null ) {
-				string responseMessage = await responseSource.Task;
+				InternetRelayChat.Message[] responseMessages = await responseSource.Task;
 				responseSource = null;
 
-				InternetRelayChat.Message[] messages = InternetRelayChat.Message.Parse( responseMessage );
-				foreach ( InternetRelayChat.Message message in messages ) {
-					if ( message.ServerName != ServerName ) throw new Exception( "Received message from foreign server" );
-				}
-
-				return messages;
+				return responseMessages;
 			}
 
 			return null;
-		}
-
-		public async Task<Channel> JoinChannel( string channelName ) {
-			InternetRelayChat.Message[]? joinResponse = await SendMessage( $"JOIN #{channelName.ToLower()}" );
-
-			if ( joinResponse != null ) {
-				Console.WriteLine( "We have join response" );
-				foreach ( InternetRelayChat.Message message in joinResponse ) {
-					Console.WriteLine( message );
-				}
-			} else {
-				Console.WriteLine( "Join response is null :c" );
-			}
-
-			
-
-			// TODO: Parse the response (channel name, current users, etc.) and construct a new Channel object from it
-
-			return new Channel(); // Placeholder
 		}
 
 		// Asynchronous function to constantly receive websocket messages from the server
@@ -191,11 +194,29 @@ namespace TwitchBot.Twitch {
 				if ( receiveResult.MessageType == WebSocketMessageType.Text ) {
 					string receivedMessage = Encoding.UTF8.GetString( receiveBuffer );
 
+					InternetRelayChat.Message[] messages = InternetRelayChat.Message.Parse( receivedMessage );
+					foreach ( InternetRelayChat.Message message in messages ) {
+						if ( message.Host == null || !message.Host.EndsWith( ExpectedHost ) ) throw new Exception( "Received message from foreign server" );
+					}
+
 					if ( responseSource != null ) {
-						responseSource.SetResult( receivedMessage );
-						responseSource = null; // Is this needed? - It is done in the SendMessage function
+						responseSource.SetResult( messages );
+						responseSource = null; // TODO: Is this needed? - It is done in the SendMessage function
 					} else {
-						Console.WriteLine( "Got unexpected message: '{0}'", receivedMessage );
+						foreach ( InternetRelayChat.Message message in messages ) {
+
+							if ( message.IsFor( Shared.UserSecrets.AccountName, ExpectedHost ) == true ) {
+								if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
+									OnChannelJoin?.Invoke( this, new OnChannelJoinEventArgs( message.Parameters[ 1.. ] ) );
+								} else {
+									Console.WriteLine( "Unhandled command: '{0}'", message.ToString() );
+								}
+							} else {
+								Console.WriteLine( "Unhandled user: '{0}'", message.ToString() );
+							}
+						}
+						
+						//throw new Exception( "Received an unexpected message" );
 					}
 
 				} else {
@@ -206,5 +227,14 @@ namespace TwitchBot.Twitch {
 			}
 		}
 
+	}
+
+	public class OnChannelJoinEventArgs : EventArgs {
+		// TODO: Eventually use a channel object
+		public string ChannelName;
+
+		public OnChannelJoinEventArgs( string channelName ) {
+			ChannelName = channelName;
+		}
 	}
 }
