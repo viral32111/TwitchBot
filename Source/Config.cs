@@ -1,6 +1,7 @@
 ﻿namespace TwitchBot {
 	public static class Config {
 		public static readonly string ApplicationDataDirectory = "TwitchBot";
+		public static readonly string UserAccessTokenFileName = "UserAccessToken.json";
 
 		public static readonly string OAuthBaseURI = "https://id.twitch.tv/oauth2";
 		public static readonly string OAuthRedirectURI = "http://localhost:3000"; // https://dev.twitch.tv/console/apps
