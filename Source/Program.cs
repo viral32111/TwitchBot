@@ -10,6 +10,7 @@
 			Log.Write( "Persistent data directory is: '{0}'.", Shared.ApplicationDataDirectory );
 
 			// Load .NET user secrets (application credentials)
+			// TODO: Only run this in debug mode, otherwise load secrets from command-line arguments
 			Shared.UserSecrets = UserSecrets.Load();
 			Log.Write( "Loaded the user secrets for this application." );
 
