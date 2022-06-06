@@ -37,8 +37,10 @@
 			}
 
 			// Register event handlers for the Twitch client
+			twitchClient.OnError += OnError;
 			twitchClient.OnConnect += OnConnect;
 			twitchClient.OnChannelJoin += OnChannelJoin;
+			twitchClient.OnChatMessage += OnChatMessage;
 			Log.Write( "Registered Twitch client event handlers." );
 
 			// Connect to Twitch chat
@@ -66,7 +68,43 @@
 		}
 
 		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinEventArgs e ) {
-			Log.Write( "Joined channel '{0}'.", e.ChannelName );
+			Log.Write( "Joined channel '{0}'.", e.Channel.Name );
+
+			//await e.Channel.Send( "Heyyyy" );
+		}
+
+		private static async Task OnChatMessage( object sender, Twitch.OnChatMessageEventArgs e ) {
+			Log.Write( "Viewer '{0}' in '{1}' said '{2}'.", e.User, e.Channel.Name, e.Content );
+
+			if ( e.Content == "!hello" ) {
+				await e.Channel.Send( "Hello World!" );
+			} else if ( e.Content == "!random" ) {
+				Random random = new Random();
+				await e.Channel.Send( $"Your random number is { random.Next( 100 ) }" );
+			} else if ( e.Content == "!cake" ) {
+				await e.Channel.Send( $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
+			} else if ( e.Content == "!socials" ) {
+				await e.Channel.Send( "You can find me on Twitter! https://twitter.com/RawrelTV" );
+			} else if ( e.Content == "!whoami" ) {
+				e.Tags.TryGetValue( "mod", out string? tagMod );
+				e.Tags.TryGetValue( "subscriber", out string? tagSubscriber );
+				e.Tags.TryGetValue( "turbo", out string? tagTurbo );
+				e.Tags.TryGetValue( "user-id", out string? tagUserId );
+				e.Tags.TryGetValue( "color", out string? tagColor );
+				e.Tags.TryGetValue( "display-name", out string? tagDisplayName );
+
+				await e.Channel.Send( $"You are {tagDisplayName}, your name color is {tagColor}, your account identifier is {tagUserId}, you are {( tagSubscriber == "1" ? "subscribed" : "not subscribed")}, you are {( tagMod == "1" ? "a moderator" : "not a moderator" )}, you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}." );
+			}
+		}
+
+		private static async Task OnError( object sender, Twitch.OnErrorEventArgs e ) {
+			Log.Write( "An error has occurred: '{0}'.", e.Message );
+
+			Log.Write( "Disconnecting..." );
+			if ( twitchClient.Connected ) await twitchClient.Disconnect();
+
+			Log.Write( "Exiting..." );
+			Environment.Exit( 1 );
 		}
 	}
 }

@@ -15,8 +15,20 @@
 
 namespace TwitchBot.Twitch {
 	public class Channel {
-		public int? Identifier = null; // room-id=675961583;
-		public string? Name = null; // #rawreltv
+		private readonly Client client;
+
+		//public int? Identifier = null; // room-id=675961583;
+		public string Name;
+
+		public Channel( Client theClient, string channelName ) {
+			client = theClient;
+
+			Name = channelName;
+		}
+
+		public async Task Send( string message ) {
+			await client.SendMessage( $"PRIVMSG #{ Name } :{ message }", expectResponse: false );
+		}
 	}
 
 	/*public class User {
