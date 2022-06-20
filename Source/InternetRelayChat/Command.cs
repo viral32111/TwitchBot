@@ -18,5 +18,7 @@ namespace TwitchBot.InternetRelayChat {
 		public static readonly string Leave = "PART";
 
 		public static readonly string Ping = "PING";
+
+		public static readonly string PrivateMessage = "PRIVMSG";
 	}
 }

@@ -48,7 +48,7 @@ namespace TwitchBot.InternetRelayChat {
 		}
 
 		public bool IsFor( string user, string host ) {
-			return Nick == user.ToLower() && User == user.ToLower() && Host == $"{user.ToLower()}.{host}";
+			return Host == $"{user.ToLower()}.{host}"; // Nick == user.ToLower() && User == user.ToLower() && 
 		}
 
 		public override string ToString() {

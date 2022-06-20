@@ -14,15 +14,31 @@
 // Channels -> Messages -> Users
 
 namespace TwitchBot.Twitch {
-	public class Channel {
-		private readonly Client client;
+	// @emote-only=0;followers-only=-1;r9k=0;room-id=127154290;slow=0;subs-only=0 :tmi.twitch.tv ROOMSTATE :#rawreltv'
 
-		//public int? Identifier = null; // room-id=675961583;
+	public class Channel {
+		public Dictionary<string, User> Users = new();
+
+		private readonly Client? client;
+
 		public string Name;
+
+		public int? Identifier = null; // room-id=675961583;
+
+		public bool? IsEmoteOnly = null;
+		public bool? IsFollowersOnly = null;
+		public bool? IsSubscribersOnly = null;
+		public bool? IsR9K = null;
+		public bool? IsRituals = null;
+		public bool? IsSlowMode = null;
 
 		public Channel( Client theClient, string channelName ) {
 			client = theClient;
 
+			Name = channelName;
+		}
+
+		public Channel( string channelName ) {
 			Name = channelName;
 		}
 

@@ -1,7 +1,7 @@
 ﻿namespace TwitchBot.Twitch {
-	public class User {
-		public int Identifier;
+	public class GlobalUser {
 		public string Name;
+		public int? Identifier;
 
 		public string? Type = null;
 		public string? Color = null;
@@ -10,25 +10,22 @@
 		public string? BadgeInformation = null;
 
 		public string[]? EmoteSets = null;
-		
-		public User(
-			string userId,
-			string displayName,
-			string? userType = null,
-			string? color = null,
-			string? badges = null,
-			string? badgeInfo = null,
-			string? emoteSets = null
-			
-		) {
-			Identifier = int.Parse( userId );
-			Name = displayName;
 
-			if ( userType != null ) Type = userType;
-			if ( color != null ) Color = color;
-			if ( badges != null ) Badges = badges.Split( ',' );
-			if ( badgeInfo != null ) BadgeInformation = badgeInfo;
-			if ( emoteSets != null ) EmoteSets = emoteSets.Split( ',' );
+		public GlobalUser( string name ) {
+			Name = name;
+		}
+	}
+
+	public class User {
+		public GlobalUser Global;
+		public Channel Channel;
+
+		public bool? IsModerator = null;
+		public bool? IsSubscriber = null;
+
+		public User( GlobalUser user, Channel channel ) {
+			Global = user;
+			Channel = channel;
 		}
 	}
 }

@@ -67,6 +67,10 @@ namespace TwitchBot.Twitch {
 		public delegate Task OnConnectHandler( object sender, EventArgs e );
 		public event OnConnectHandler? OnConnect;
 
+		// An event that is ran whenever the client is ready
+		public delegate Task OnReadyHandler( object sender, OnReadyEventArgs e );
+		public event OnReadyHandler? OnReady;
+
 		// An event that is ran whenever a channel is joined
 		public delegate Task OnChannelJoinHandler( object sender, OnChannelJoinEventArgs e );
 		public event OnChannelJoinHandler? OnChannelJoin;
@@ -74,6 +78,22 @@ namespace TwitchBot.Twitch {
 		// An event that is ran whenever a chat message is received
 		public delegate Task OnChatMessageHandler( object sender, OnChatMessageEventArgs e );
 		public event OnChatMessageHandler? OnChatMessage;
+
+		// An event that is ran whenever a user is updated in a channel
+		public delegate Task OnUserUpdateHandler( object sender, OnUserUpdateEventArgs e );
+		public event OnUserUpdateHandler? OnUserUpdate;
+
+		// An event that is ran whenever a channel is updated
+		public delegate Task OnChannelUpdateHandler( object sender, OnChannelUpdateEventArgs e );
+		public event OnChannelUpdateHandler? OnChannelUpdate;
+
+		// An event that is ran whenever a user joins a channel
+		public delegate Task OnUserChannelJoinHandler( object sender, OnUserChannelJoinEventArgs e );
+		public event OnUserChannelJoinHandler? OnUserChannelJoin;
+
+		// An event that is ran whenever a user leaves a channel
+		public delegate Task OnUserChannelLeaveHandler( object sender, OnUserChannelLeaveEventArgs e );
+		public event OnUserChannelLeaveHandler? OnUserChannelLeave;
 
 		// Synchronous function to connect to the websocket server, or timeout after a specified period
 		// NOTE: This blocks until the connection is over, which is intended behavior to keep the application running
@@ -177,36 +197,8 @@ namespace TwitchBot.Twitch {
 							return;
 						}
 
-						if ( !message.Tags.TryGetValue( "user-id", out string? userId ) || userId == null ) {
-							OnError?.Invoke( this, new OnErrorEventArgs( "User identifier tag missing from user state command" ) );
-							return;
-						}
-
-						if ( !message.Tags.TryGetValue( "display-name", out string? displayName ) || displayName == null ) {
-							OnError?.Invoke( this, new OnErrorEventArgs( "Display name tag missing from user state command" ) );
-							return;
-						}
-
-						// This feels wrong...
-						message.Tags.TryGetValue( "user-type", out string? userType );
-						message.Tags.TryGetValue( "color", out string? color );
-						message.Tags.TryGetValue( "badges", out string? badges );
-						message.Tags.TryGetValue( "badge-information", out string? badgeInformation );
-						message.Tags.TryGetValue( "emote-sets", out string? emoteSets );
-
-						User user = new(
-							userId,
-							displayName,
-							userType,
-							color,
-							badges,
-							badgeInformation,
-							emoteSets
-						);
-
-						Log.Write( "Logged in as '{0}' ({1}).", user.Name, user.Identifier );
-
-						// TODO: Add this user to some sort of shared state
+						GlobalUser user = State.UpdateGlobalUser( message.Tags );
+						OnReady?.Invoke( this, new OnReadyEventArgs( user ) );
 					}
 				}
 			}
@@ -258,14 +250,17 @@ namespace TwitchBot.Twitch {
 				if ( receiveResult.MessageType == WebSocketMessageType.Text ) {
 					string receivedMessage = Encoding.UTF8.GetString( receiveBuffer );
 
-					InternetRelayChat.Message[] messages = InternetRelayChat.Message.Parse( receivedMessage );
 					List<InternetRelayChat.Message> ourMessages = new();
+					foreach ( InternetRelayChat.Message message in InternetRelayChat.Message.Parse( receivedMessage ) ) {
 
-					foreach ( InternetRelayChat.Message message in messages ) {
+						ConsoleColor currentColor = Console.ForegroundColor;
+						Console.ForegroundColor = ConsoleColor.DarkRed;
+						Console.WriteLine( message.ToString() );
+						Console.ForegroundColor = currentColor;
 
 						// https://dev.twitch.tv/docs/irc#keepalive-messages
 						if ( message.Command == InternetRelayChat.Command.Ping ) { // message.Host == null && 
-							await SendMessage( $"PONG :{message.Parameters}" );							
+							await SendMessage( $"PONG :{message.Parameters}" );
 							continue;
 						}
 
@@ -274,47 +269,100 @@ namespace TwitchBot.Twitch {
 							return;
 						}
 
-						ourMessages.Add( message );
+						if ( responseSource == null ) {
+							HandleUnexpectedMessage( message );
+						} else {
+							ourMessages.Add( message );
+						}
 
 					}
-
-					// @badge-info=;badges=moderator/1;client-nonce=e583d353bcaf5236bd267b87ca89690d;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=5587ba2a-e24a-46e6-9954-9881bc970dbb;mod=1;room-id=127154290;subscriber=0;tmi-sent-ts=1654544231319;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG :#rawreltv :wowe i ran the bot first time and it successfully logged in and joined this chat, gg me
 
 					if ( responseSource != null ) {
 						responseSource.SetResult( ourMessages.ToArray() );
-						responseSource = null; // TODO: Is this needed? - It is done in the SendMessage function
-					} else {
-						foreach ( InternetRelayChat.Message message in ourMessages ) {
-							if ( message.IsServer( ExpectedHost ) ) {
-								Console.WriteLine( "Unhandled (server): '{0}'", message.ToString() );
-							} else {
-								if ( message.IsFor( Shared.UserSecrets.AccountName, ExpectedHost ) == true ) {
-									if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-										OnChannelJoin?.Invoke( this, new OnChannelJoinEventArgs( this, message.Parameters[ 1.. ] ) );
-									} else {
-										Console.WriteLine( "Unhandled (command): '{0}'", message.ToString() );
-									}
-								} else {
-									if ( message.Command == "PRIVMSG" && message.Parameters != null && message.User != null && message.Tags != null ) {
-										string[] parameters = message.Parameters.Split( ':', 2 );
-										string channelName = parameters[ 0 ].Trim()[ 1.. ];
-										string messageContent = parameters[ 1 ].Trim();
-
-										OnChatMessage?.Invoke( this, new OnChatMessageEventArgs( this, messageContent, message.User, channelName, message.Tags ) );
-									} else {
-										Console.WriteLine( "Unhandled (user): '{0}'", message.ToString() );
-									}
-								}
-							}
-						}
+						//responseSource = null; // TODO: Is this needed? - It is done in the SendMessage function
 					}
 
+				} else if ( receiveResult.MessageType == WebSocketMessageType.Close ) {
+					Console.WriteLine( "Connection closed." );
+
 				} else {
-					throw new Exception( $"Received unknown message type {receiveResult.MessageType} of {receiveResult.Count} bytes" );
+					OnError?.Invoke( this, new OnErrorEventArgs( $"Received unknown message type {receiveResult.MessageType} of {receiveResult.Count} bytes" ) );
 				}
 
 				Array.Clear( receiveBuffer );
 			}
+		}
+
+		// @badge-info=;badges=moderator/1;client-nonce=e583d353bcaf5236bd267b87ca89690d;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=5587ba2a-e24a-46e6-9954-9881bc970dbb;mod=1;room-id=127154290;subscriber=0;tmi-sent-ts=1654544231319;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG :#rawreltv :wowe i ran the bot first time and it successfully logged in and joined this chat, gg me
+		private void HandleUnexpectedMessage( InternetRelayChat.Message message ) {
+
+			// Server
+			if ( message.IsServer( ExpectedHost ) ) {
+				if ( message.Command == Command.UserState && message.Parameters != null && message.Tags != null ) {
+					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+					User user = State.UpdateUser( channel, message.Tags );
+					OnUserUpdate?.Invoke( this, new OnUserUpdateEventArgs( user ) );
+
+				} else if ( message.Command == Command.RoomState && message.Parameters != null && message.Tags != null ) {
+					Channel channel = State.UpdateChannel( message.Parameters[ 1.. ], message.Tags );
+					OnChannelUpdate?.Invoke( this, new OnChannelUpdateEventArgs( channel ) );
+
+				} else {
+					Console.WriteLine( "Unexpected Server Message: '{0}'", message.ToString() );
+				}
+
+			} else {
+
+				// Command
+				if ( message.IsFor( Shared.UserSecrets.AccountName, ExpectedHost ) == true ) {
+					if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
+						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+						OnChannelJoin?.Invoke( this, new OnChannelJoinEventArgs( channel ) );
+
+					} else if ( message.Command == InternetRelayChat.Command.Names && message.Parameters != null ) {
+						List<string> userNames = new( message.Parameters[ ( message.Parameters.IndexOf( ':' ) + 1 ).. ].Split( ' ' ) );
+						userNames.Remove( Shared.UserSecrets.AccountName );
+						userNames.Remove( Shared.UserSecrets.AccountName.ToLower() );
+
+						if ( userNames.Count == 0 ) {
+							Log.Write( "No users are in the channel with us." );
+						} else {
+							Log.Write( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
+						}
+					
+					} else if ( message.Command == InternetRelayChat.Command.NamesEnd && message.Parameters != null ) {
+						// Ignore
+
+					} else {
+						Console.WriteLine( "Unexpected Command Message: '{0}'", message.ToString() );
+					}
+
+				// User
+				} else if ( message.User != null ) {
+					if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Parameters != null && message.Tags != null ) {
+						string[] parameters = message.Parameters.Split( ':', 2 );
+						string channelName = parameters[ 0 ].Trim()[ 1.. ];
+						string messageContent = parameters[ 1 ].Trim();
+
+						// TODO: Create message object with information received then use that as the argument to this event
+						OnChatMessage?.Invoke( this, new OnChatMessageEventArgs( this, messageContent, message.User, channelName, message.Tags ) );
+
+					} else if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
+						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+						User user = State.GetOrCreateUser( channel, message.User );
+						OnUserChannelJoin?.Invoke( this, new OnUserChannelJoinEventArgs( user ) );
+
+					} else if ( message.Command == InternetRelayChat.Command.Leave && message.Parameters != null ) {
+						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+						User user = State.GetOrCreateUser( channel, message.User );
+						OnUserChannelLeave?.Invoke( this, new OnUserChannelLeaveEventArgs( user ) );
+
+					} else {
+						Console.WriteLine( "Unexpected User Message: '{0}'", message.ToString() );
+					}
+				}
+			}
+
 		}
 
 	}
@@ -322,7 +370,7 @@ namespace TwitchBot.Twitch {
 	public class OnChannelJoinEventArgs : EventArgs {
 		public Channel Channel { get; init; }
 
-		public OnChannelJoinEventArgs( Client client, string channelName ) => Channel = new Channel( client, channelName );
+		public OnChannelJoinEventArgs( Channel channel ) => Channel = channel;
 	}
 
 	public class OnErrorEventArgs : EventArgs {
@@ -339,6 +387,36 @@ namespace TwitchBot.Twitch {
 		public Dictionary<string, string?> Tags { get; init; }
 
 		public OnChatMessageEventArgs( Client client, string messageContent, string userName, string channelName, Dictionary<string, string?> _tags )
-			=> ( Channel, Content, User, Tags ) = ( Channel = new Channel( client, channelName ), messageContent, userName, _tags );
+			=> (Channel, Content, User, Tags) = (Channel = new Channel( client, channelName ), messageContent, userName, _tags);
 	}
+
+
+	public class OnReadyEventArgs : EventArgs {
+		public GlobalUser User { get; init; }
+		public OnReadyEventArgs( GlobalUser user ) => User = user;
+	}
+
+
+
+	public class OnUserUpdateEventArgs : EventArgs {
+		public User User { get; init; }
+		public OnUserUpdateEventArgs( User user ) => User = user;
+	}
+
+	public class OnChannelUpdateEventArgs : EventArgs {
+		public Channel Channel { get; init; }
+		public OnChannelUpdateEventArgs( Channel channel ) => Channel = channel;
+	}
+
+
+	public class OnUserChannelJoinEventArgs : EventArgs {
+		public User User { get; init; }
+		public OnUserChannelJoinEventArgs( User user ) => User = user;
+	}
+
+	public class OnUserChannelLeaveEventArgs : EventArgs {
+		public User User { get; init; }
+		public OnUserChannelLeaveEventArgs( User user ) => User = user;
+	}
+
 }
