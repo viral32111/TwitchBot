@@ -48,11 +48,10 @@ namespace TwitchBot {
 			twitchClient.OnConnect += OnConnect;
 			twitchClient.OnReady += OnReady;
 			twitchClient.OnChannelJoin += OnChannelJoin;
+			twitchClient.OnChannelLeave += OnChannelLeave;
 			twitchClient.OnChatMessage += OnChatMessage;
 			twitchClient.OnUserUpdate += OnUserUpdate;
 			twitchClient.OnChannelUpdate += OnChannelUpdate;
-			twitchClient.OnUserChannelJoin += OnUserChannelJoin;
-			twitchClient.OnUserChannelLeave += OnUserChannelLeave;
 			Log.Write( "Registered Twitch client event handlers." );
 
 			consoleCtrlHandler += new EventHandler( OnApplicationExit );
@@ -97,39 +96,35 @@ namespace TwitchBot {
 			await twitchClient.JoinChannel( Config.ChannelName );
 		}
 
-		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinEventArgs e ) {
-			Log.Write( "Joined channel '{0}'.", e.Channel.Name );
+		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
+			Log.Write( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 
-			//await e.Channel.Send( "Heyyyy" );
+			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
+		}
+
+		private static async Task OnChannelLeave( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
+			Log.Write( "User '{0}' left channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 		}
 
 		private static async Task OnChatMessage( object sender, Twitch.OnChatMessageEventArgs e ) {
-			Log.Write( "Viewer '{0}' in '{1}' said '{2}'.", e.User, e.Channel.Name, e.Content );
+			Log.Write( "User '{0}' in '{1}' said '{2}'.", e.Message.User.Global.Name, e.Message.Channel.Name, e.Message.Content );
 
-			if ( e.Content == "!hello" ) {
-				await e.Channel.Send( "Hello World!" );
-			} else if ( e.Content == "!random" ) {
+			if ( e.Message.Content == "!hello" ) {
+				await e.Message.Channel.Send( twitchClient, "Hello World!" );
+			} else if ( e.Message.Content == "!random" ) {
 				Random random = new();
-				await e.Channel.Send( $"Your random number is {random.Next( 100 )}" );
-			} else if ( e.Content == "!cake" ) {
-				await e.Channel.Send( $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
-			} else if ( e.Content == "!socials" ) {
-				await e.Channel.Send( "You can find me on Twitter! https://twitter.com/RawrelTV" );
-			} else if ( e.Content == "!whoami" ) {
-				e.Tags.TryGetValue( "mod", out string? tagMod );
-				e.Tags.TryGetValue( "subscriber", out string? tagSubscriber );
-				e.Tags.TryGetValue( "turbo", out string? tagTurbo );
-				e.Tags.TryGetValue( "user-id", out string? tagUserId );
-				e.Tags.TryGetValue( "color", out string? tagColor );
-				e.Tags.TryGetValue( "display-name", out string? tagDisplayName );
-
-				await e.Channel.Send( $"You are {tagDisplayName}, your name color is {tagColor}, your account identifier is {tagUserId}, you are {( tagSubscriber == "1" ? "subscribed" : "not subscribed" )}, you are {( tagMod == "1" ? "a moderator" : "not a moderator" )}, you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}." );
+				await e.Message.Channel.Send( twitchClient, $"Your random number is {random.Next( 100 )}" );
+			} else if ( e.Message.Content == "!cake" ) {
+				await e.Message.Channel.Send( twitchClient, $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
+			} else if ( e.Message.Content == "!socials" ) {
+				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );
+			} else if ( e.Message.Content == "!whoami" ) {
+				await e.Message.Channel.Send( twitchClient, $"You are { e.Message.User.Global.Name }, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
 			}
 		}
 
 		private static async Task OnUserUpdate( object sender, Twitch.OnUserUpdateEventArgs e ) {
-			Log.Write( "User '{0}' updated.", e.User.Global.Name );
-			Log.Write( " Identifier: '{0}'", e.User.Global.Identifier );
+			Log.Write( "User '{0}' ({1}) updated.", e.User.Global.Name, e.User.Global.Identifier );
 			Log.Write( " Type: '{0}'", e.User.Global.Type );
 			Log.Write( " Color: '{0}'", e.User.Global.Color );
 			Log.Write( " Badges: '{0}'", e.User.Global.Badges != null ? string.Join( ',', e.User.Global.Badges ) : null );
@@ -141,20 +136,12 @@ namespace TwitchBot {
 		}
 
 		private static async Task OnChannelUpdate( object sender, Twitch.OnChannelUpdateEventArgs e ) {
-			Log.Write( "Channel '{0}' updated.", e.Channel.Name );
+			Log.Write( "Channel '{0}' ({1}) updated.", e.Channel.Name, e.Channel.Identifier );
 			Log.Write( " Is Emote Only: '{0}'", e.Channel.IsEmoteOnly );
 			Log.Write( " Is Followers Only: '{0}'", e.Channel.IsFollowersOnly );
 			Log.Write( " Is Subscribers Only: '{0}'", e.Channel.IsSubscribersOnly );
 			Log.Write( " Is R9K: '{0}'", e.Channel.IsR9K );
 			Log.Write( " Is Rituals: '{0}'", e.Channel.IsRituals );
-		}
-
-		private static async Task OnUserChannelJoin( object sender, Twitch.OnUserChannelJoinEventArgs e ) {
-			Log.Write( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
-		}
-
-		private static async Task OnUserChannelLeave( object sender, Twitch.OnUserChannelLeaveEventArgs e ) {
-			Log.Write( "User '{0}' left channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 		}
 
 		private static async Task OnError( object sender, Twitch.OnErrorEventArgs e ) {
