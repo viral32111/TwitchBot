@@ -1,4 +1,4 @@
-name: CodeQL
+name: Analyze
 
 on:
   push:
@@ -8,15 +8,12 @@ on:
     - '**.csproj'
   pull_request:
     branches: [ main ]
-    paths:
-    - '**.cs'
-    - '**.csproj'
   schedule:
     - cron: '0 0 * * 0'
 
 jobs:
   analyze:
-    name: Analyze
+    name: Ubuntu
     runs-on: ubuntu-latest
     permissions:
       security-events: write
