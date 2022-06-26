@@ -1,0 +1,22 @@
+# Visual Studio
+.vs/
+obj/
+
+# Non-essential build files
+bin/Debug/
+bin/Release/net6.0/TwitchBot.exe
+bin/Release/net6.0/TwitchBot.pdb
+
+# GitHub
+.git/
+.github/
+.gitignore
+
+# Meta
+README.md
+LICENSE.txt
+SECURITY.md
+
+# Project
+TwitchBot.csproj
+TwitchBot.sln

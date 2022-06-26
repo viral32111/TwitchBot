@@ -13,6 +13,7 @@ namespace TwitchBot {
 		public static async Task Main( string[] arguments ) {
 
 			// Set the persistent data directory
+			// NOTE: Does not work on Linux!
 			Shared.ApplicationDataDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), Config.ApplicationDataDirectory );
 			Log.Write( "Persistent data directory is: '{0}'.", Shared.ApplicationDataDirectory );
 
