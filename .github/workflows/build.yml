@@ -8,17 +8,20 @@ on:
     - '**.csproj'
   pull_request:
     branches: [ main ]
-    paths:
-    - '**.cs'
-    - '**.csproj'
+
+env:
+  REGISTRY_NAME: ghcr.io
 
 jobs:
-  build-ubuntu:
-    name: Build on Ubuntu
+  build:
+    name: Ubuntu
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-    - name: Setup Repository
+    - name: Clone Repository
       uses: actions/checkout@v3
 
     - name: Setup .NET
@@ -26,17 +29,33 @@ jobs:
       with:
         dotnet-version: 6.0.x
 
+    - name: Login to Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY_NAME }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Restore Dependencies
       run: dotnet restore
 
-    - name: Build
+    - name: Build Project
       run: dotnet build --configuration Release --no-restore
 
-    - name: Test
+    - name: Test Project
       run: dotnet test --configuration Release --no-build --verbosity normal
 
-    - name: Upload
+    - name: Upload Build
       uses: actions/upload-artifact@v3
       with:
         name: TwitchBot
         path: bin/Release/net6.0/TwitchBot.dll
+
+    - name: Build & Push Docker Image
+      uses: docker/build-push-action@v3
+      with:
+        file: ./Dockerfile
+        context: ./bin/Release/net6.0/
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ env.REGISTRY_NAME }}/${{ github.actor }}/twitchbot:latest
