@@ -15,12 +15,27 @@ namespace TwitchBot {
 			// Set the persistent data directory
 			// NOTE: Does not work on Linux!
 			Shared.ApplicationDataDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), Config.ApplicationDataDirectory );
+			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) Directory.CreateDirectory( Shared.ApplicationDataDirectory );
 			Log.Write( "Persistent data directory is: '{0}'.", Shared.ApplicationDataDirectory );
 
 			// Load .NET user secrets (application credentials)
 			// TODO: Only run this in debug mode, otherwise load secrets from command-line arguments
 			Shared.UserSecrets = UserSecrets.Load();
 			Log.Write( "Loaded the user secrets for this application." );
+
+			// Download Cloudflare Tunnel client
+			if ( Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) == false ) {
+				Log.Write( "Cloudflare Tunnel client does not exist or is invalid, downloading version {0}...", Config.CloudflareTunnelVersion );
+				await Cloudflare.DownloadClient( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum );
+				Log.Write( "Cloudflare Tunnel client downloaded to: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
+			} else {
+				Log.Write( "Using existing Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
+			}
+
+			// Start a Cloudflare Tunnel
+			Log.Write( "Starting Cloudflare Tunnel..." );
+			Uri tunnelUrl = Cloudflare.StartTunnel( Config.CloudflareTunnelVersion );
+			Log.Write( "Cloudflare Tunnel running at: '{0}'.", tunnelUrl.ToString() );
 
 			// Attempt to load an existing user access token from disk
 			try {
@@ -120,7 +135,7 @@ namespace TwitchBot {
 			} else if ( e.Message.Content == "!socials" ) {
 				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );
 			} else if ( e.Message.Content == "!whoami" ) {
-				await e.Message.Channel.Send( twitchClient, $"You are { e.Message.User.Global.Name }, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
+				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
 			}
 		}
 
