@@ -33,9 +33,9 @@ namespace TwitchBot {
 			}
 
 			// Start a Cloudflare Tunnel
-			Log.Write( "Starting Cloudflare Tunnel..." );
-			Uri tunnelUrl = Cloudflare.StartTunnel( Config.CloudflareTunnelVersion );
-			Log.Write( "Cloudflare Tunnel running at: '{0}'.", tunnelUrl.ToString() );
+			//Log.Write( "Starting Cloudflare Tunnel..." );
+			//Uri tunnelUrl = Cloudflare.StartTunnel( Config.CloudflareTunnelVersion );
+			//Log.Write( "Cloudflare Tunnel running at: '{0}'.", tunnelUrl.ToString() );
 
 			// Attempt to load an existing user access token from disk
 			try {
@@ -85,6 +85,8 @@ namespace TwitchBot {
 			Log.Write( "Disconnecting..." );
 			Task disconnectTask = twitchClient.Disconnect();
 			disconnectTask.Wait();
+
+			// TODO: Gracefully stop Cloudflare Tunnel client
 
 			Environment.Exit( 0 );
 

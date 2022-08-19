@@ -18,7 +18,8 @@ namespace TwitchBot {
 				RedirectStandardError = true,
 				RedirectStandardInput = false,
 				UseShellExecute = false,
-				CreateNoWindow = true
+				CreateNoWindow = true,
+				
 			};
 
 			Process? tunnelClient = Process.Start( startInfo );
