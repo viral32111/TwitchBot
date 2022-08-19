@@ -4,6 +4,16 @@ This is my Twitch integration and chat bot, primarily made for [Rawreltv](https:
 
 Currently it is only able to manage user access tokens, connect to Twitch chat, request capabilities, and authenticate as the bot user. I am slowly working on implementing each part of the underlying protocol before working on any major features.
 
+## Modules
+
+* Front-end
+  * Dashboard
+
+* Back-end
+  * OAuth Token Granter
+  * IRC Chatbot
+  * Event Listener (EventSub)
+  
 ## License
 
 Copyright (C) 2022 [viral32111](https://viral32111.com).
