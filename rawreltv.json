@@ -1,0 +1,25 @@
+{
+	"channel": 127154290,
+	"commands": {
+		"hello": {
+			"aliases": [ "hey", "hi" ],
+			"message": "Hello {User.Name}, I am {Bot.Name}!"
+		},
+		"random": {
+			"aliases": [ "rand" ],
+			"message": "Your random number is {RandomNumber}"
+		},
+		"cake": {
+			"message": "This was a triumph! I'm making a note here: Huge success! It's hard to overstate my satisfaction. We do what we must because we can. For the good of all of us. Except the ones who are dead. But there's no sense crying over every mistake. You just keep on trying 'til you run out of cake."
+		},
+		"socials": {
+			"aliases": [ "social", "twitter" ],
+			"message": "You can find me on Twitter! https://twitter.com/RawrelTV"
+		},
+		"whoami": {
+			"aliases": [ "me" ],
+			"message": "You are {User.Name}, your name color is {User.Color}, your account identifier is {User.Identifier}."
+			
+		}
+	}
+}
