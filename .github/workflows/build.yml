@@ -4,8 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-    - '**.cs'
+    - 'Source/**'
     - '**.csproj'
+    - '**.sln'
+    - 'Dockerfile'
+    - '.dockerignore'
   pull_request:
     branches: [ main ]
 
