@@ -39,9 +39,9 @@ namespace TwitchBot {
 			}
 
 			// Start a Cloudflare Tunnel
-			//Log.Write( "Starting Cloudflare Tunnel..." );
-			//Uri tunnelUrl = Cloudflare.StartTunnel( Config.CloudflareTunnelVersion );
-			//Log.Write( "Cloudflare Tunnel running at: '{0}'.", tunnelUrl.ToString() );
+			Log.Write( "Starting Cloudflare Tunnel..." );
+			Uri tunnelUrl = Cloudflare.StartTunnel( Config.CloudflareTunnelVersion );
+			Log.Write( "Cloudflare Tunnel running at: '{0}'.", tunnelUrl.ToString() );
 
 			// Attempt to load an existing user access token from disk
 			try {
@@ -88,12 +88,13 @@ namespace TwitchBot {
 		}
 
 		private static bool OnApplicationExit( CtrlType signal ) {
+			Log.Write( "Stopping Cloudflare Tunnel client..." );
+			Cloudflare.StopTunnel();
+
 			Log.Write( "Disconnecting..." );
-			Task disconnectTask = twitchClient.Disconnect();
-			disconnectTask.Wait();
+			twitchClient.Disconnect().Wait();
 
-			// TODO: Gracefully stop Cloudflare Tunnel client
-
+			Log.Write( "Exiting..." );
 			Environment.Exit( 0 );
 
 			return false;
@@ -144,6 +145,10 @@ namespace TwitchBot {
 				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );
 			} else if ( e.Message.Content == "!whoami" ) {
 				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
+			
+			// TODO: Implement this feature from the Python PoC
+			} else if ( e.Message.Content == "!streak" ) {
+				await e.Message.Channel.Send( twitchClient, $"RawrelTV has been streaming every day for the last 0 day(s)! This streak started 00/00/0000 00:00." );
 			}
 		}
 
@@ -170,6 +175,9 @@ namespace TwitchBot {
 
 		private static async Task OnError( object sender, Twitch.OnErrorEventArgs e ) {
 			Log.Write( "An error has occurred: '{0}'.", e.Message );
+
+			Log.Write( "Stopping Cloudflare Tunnel client..." );
+			Cloudflare.StopTunnel(); // TODO: Kill tunnel on error?
 
 			Log.Write( "Disconnecting..." );
 			await twitchClient.Disconnect();

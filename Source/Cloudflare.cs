@@ -9,6 +9,8 @@ using System.Text.RegularExpressions;
 namespace TwitchBot {
 	public static class Cloudflare {
 
+		private static Process? tunnelClient = null;
+
 		public static Uri StartTunnel( string clientVersion ) { // , short localPortNumber
 
 			ProcessStartInfo startInfo = new() {
@@ -22,7 +24,7 @@ namespace TwitchBot {
 				
 			};
 
-			Process? tunnelClient = Process.Start( startInfo );
+			tunnelClient = Process.Start( startInfo );
 
 			if ( tunnelClient == null ) throw new Exception( "Failed to start the Cloudflare Tunnel client" );
 
@@ -54,6 +56,17 @@ namespace TwitchBot {
 			//Console.WriteLine( "closed" );
 
 		}
+
+		public static void StopTunnel() {
+
+            if ( tunnelClient == null ) throw new Exception( "Cloudflare Tunnel client not started" );
+
+            //tunnelClient.Close();
+            tunnelClient.Kill();
+			tunnelClient.WaitForExit();
+			tunnelClient.Dispose();
+
+        }
 
 		/*private static void ReadStandardStream( StreamReader standardStream ) {
 
