@@ -20,9 +20,15 @@ namespace TwitchBot {
 
 			// Load .NET user secrets (application credentials)
 			// TODO: Only run this in debug mode, otherwise load secrets from command-line arguments
-			Shared.UserSecrets = UserSecrets.Load();
-			Log.Write( "Loaded the user secrets for this application." );
-
+			try {
+                Shared.UserSecrets = UserSecrets.Load();
+                Log.Write( "Loaded the user secrets for this application." );
+            } catch ( Exception exception ) {
+                Log.Write( "Failed to load user secrets: '{0}'.", exception.Message );
+				Environment.Exit( 1 );
+				return;
+            }
+			
 			// Download Cloudflare Tunnel client
 			if ( Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) == false ) {
 				Log.Write( "Cloudflare Tunnel client does not exist or is invalid, downloading version {0}...", Config.CloudflareTunnelVersion );
@@ -50,7 +56,7 @@ namespace TwitchBot {
 					await userAccessToken.Save();
 				}
 
-				// If loading an existing token fails, then request & save a fresh one
+			// If loading an existing token fails, then request & save a fresh one
 			} catch ( Exception exception ) {
 				Log.Write( "Failed to load the user access token: '{0}'. Requesting a new one...", exception.Message );
 				userAccessToken = await UserAccessToken.Request( new string[] { "chat:read", "chat:edit" } );

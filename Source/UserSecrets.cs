@@ -14,11 +14,19 @@ namespace TwitchBot {
 
 			IConfigurationRoot configuration = configurationBuilder.Build();
 
-			return new UserSecrets() {
-				AppClientIdentifier = configuration[ "AppClientIdentifier" ],
-				AppClientSecret = configuration[ "AppClientSecret" ],
-				AccountName = configuration[ "AccountName" ]
-			};
+			string appClientIdentifier = configuration[ "AppClientIdentifier" ];
+			string appClientSecret = configuration[ "AppClientSecret" ];
+			string accountName = configuration[ "AccountName" ];
+
+			if ( string.IsNullOrEmpty( appClientIdentifier ) ) throw new Exception( "User secrets is missing application client identifier" );
+			if ( string.IsNullOrEmpty( appClientSecret ) ) throw new Exception( "User secrets is missing application client secret" );
+			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "User secrets is missing account name" );
+
+            return new UserSecrets() {
+				AppClientIdentifier = appClientIdentifier,
+				AppClientSecret = appClientSecret,
+				AccountName = accountName
+            };
 		}
 	}
 }

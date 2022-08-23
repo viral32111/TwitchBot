@@ -4,6 +4,17 @@ This is my Twitch integration and chat bot, primarily made for [Rawreltv](https:
 
 Currently it is only able to manage user access tokens, connect to Twitch chat, request capabilities, and authenticate as the bot user. I am slowly working on implementing each part of the underlying protocol before working on any major features.
 
+## Running
+
+This project uses [.NET user secrets](https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets) to store sensitive configuration values.
+
+Secrets can be set using the `dotnet user-secrets set` command. The following secrets are required:
+ * `AppClientIdentifier` should be your Twitch application's client ID.
+ * `AppClientSecret` should be your Twitch application's client secret.
+ * `AccountName` should be your Twitch Bot's account name.
+
+**NOTE: There is currently no system in place for providing secrets when running the project in a production environment.**
+
 ## Modules
 
 * Front-end
