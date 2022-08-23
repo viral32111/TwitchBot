@@ -22,11 +22,11 @@ namespace TwitchBot {
 			if ( string.IsNullOrEmpty( appClientSecret ) ) throw new Exception( "User secrets is missing application client secret" );
 			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "User secrets is missing account name" );
 
-            return new UserSecrets() {
+			return new UserSecrets() {
 				AppClientIdentifier = appClientIdentifier,
 				AppClientSecret = appClientSecret,
 				AccountName = accountName
-            };
+			};
 		}
 	}
 }

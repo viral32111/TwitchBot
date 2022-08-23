@@ -21,13 +21,13 @@ namespace TwitchBot {
 			// Load .NET user secrets (application credentials)
 			// TODO: Only run this in debug mode, otherwise load secrets from command-line arguments
 			try {
-                Shared.UserSecrets = UserSecrets.Load();
-                Log.Write( "Loaded the user secrets for this application." );
-            } catch ( Exception exception ) {
-                Log.Write( "Failed to load user secrets: '{0}'.", exception.Message );
+				Shared.UserSecrets = UserSecrets.Load();
+				Log.Write( "Loaded the user secrets for this application." );
+			} catch ( Exception exception ) {
+				Log.Write( "Failed to load user secrets: '{0}'.", exception.Message );
 				Environment.Exit( 1 );
 				return;
-            }
+			}
 			
 			// Download Cloudflare Tunnel client
 			if ( Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) == false ) {
