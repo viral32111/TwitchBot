@@ -59,14 +59,14 @@ namespace TwitchBot {
 
 		public static void StopTunnel() {
 
-            if ( tunnelClient == null ) throw new Exception( "Cloudflare Tunnel client not started" );
+			if ( tunnelClient == null ) throw new Exception( "Cloudflare Tunnel client not started" );
 
-            //tunnelClient.Close();
-            tunnelClient.Kill();
+			//tunnelClient.Close();
+			tunnelClient.Kill();
 			tunnelClient.WaitForExit();
 			tunnelClient.Dispose();
 
-        }
+		}
 
 		/*private static void ReadStandardStream( StreamReader standardStream ) {
 

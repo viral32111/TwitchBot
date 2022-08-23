@@ -18,7 +18,7 @@ namespace TwitchBot {
 			string appClientSecret = configuration[ "AppClientSecret" ];
 			string accountName = configuration[ "AccountName" ]; // TODO: Fetch this via /users API lookup - https://dev.twitch.tv/docs/api/reference#get-users
 
-            if ( string.IsNullOrEmpty( appClientIdentifier ) ) throw new Exception( "User secrets is missing application client identifier" );
+			if ( string.IsNullOrEmpty( appClientIdentifier ) ) throw new Exception( "User secrets is missing application client identifier" );
 			if ( string.IsNullOrEmpty( appClientSecret ) ) throw new Exception( "User secrets is missing application client secret" );
 			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "User secrets is missing account name" );
 
