@@ -93,6 +93,7 @@ namespace TwitchBot {
 
 		// Gets the path to the executable file of the client
 		public static string GetClientPath( string clientVersion ) {
+			// TODO: Download to Config.CacheDirectory instead
 			return Path.Combine( Shared.ApplicationDataDirectory, $"cloudflared-{clientVersion}-windows-amd64.exe" );
 		}
 

@@ -204,23 +204,23 @@ namespace TwitchBot {
 		/***** DEPRECATED PROPERTIES *****/
 		/*********************************/
 
-		[Obsolete( "Use DataDirectory instead" )] public static readonly string ApplicationDataDirectory = "TwitchBot";
+		[Obsolete( "Use Config.DataDirectory instead" )] public static readonly string ApplicationDataDirectory = "TwitchBot";
 		[Obsolete( "Do not use" )] public static readonly string UserAccessTokenFileName = "UserAccessToken.json";
 
-		[Obsolete( "Use TwitchOAuthBaseURL instead" )] public static readonly string OAuthBaseURI = "https://id.twitch.tv/oauth2";
-		[Obsolete( "Use TwitchOAuthRedirectURL instead" )] public static readonly string OAuthRedirectURI = "http://localhost:3000"; // https://dev.twitch.tv/console/apps
+		[Obsolete( "Use Config.TwitchOAuthBaseURL instead" )] public static readonly string OAuthBaseURI = "https://id.twitch.tv/oauth2";
+		[Obsolete( "Use Config.TwitchOAuthRedirectURL instead" )] public static readonly string OAuthRedirectURI = "http://localhost:3000"; // https://dev.twitch.tv/console/apps
 
-		[Obsolete( "Use TwitchChatBaseURL instead" )] public static readonly string ChatServerAddress = "irc-ws.chat.twitch.tv";
+		[Obsolete( "Use Config.TwitchChatBaseURL instead" )] public static readonly string ChatServerAddress = "irc-ws.chat.twitch.tv";
 		[Obsolete( "Do not use" )] public static readonly int ChatServerPort = 443;
 
-		[Obsolete( "Use TwitchChatPrimaryChannelName instead" )] public static readonly string ChannelName = "Rawreltv";
+		[Obsolete( "Use Config.TwitchChatPrimaryChannelName instead" )] public static readonly string ChannelName = "Rawreltv";
 
 		// https://github.com/cloudflare/cloudflared
 		//[Obsolete] public static readonly string CloudflareTunnelVersion = "2022.8.0";
 		//[Obsolete] public static readonly string CloudflareTunnelChecksum = "0aa0c6c576482399dfc098e6ff1969001ec924b3834b65ecb43ceac5bcd0a6c4";
 
 		// https://dev.twitch.tv/docs/api/reference
-		[Obsolete( "Deprecated, use TwitchAPIBaseURL instead" )] public static readonly string ApiBaseURI = "https://api.twitch.tv/helix"; // Helix is v5
+		[Obsolete( "Deprecated, use Config.TwitchAPIBaseURL instead" )] public static readonly string ApiBaseURI = "https://api.twitch.tv/helix"; // Helix is v5
 
 	}
 }
