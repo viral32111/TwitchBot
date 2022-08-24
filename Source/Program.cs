@@ -1,4 +1,7 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace TwitchBot {
 	public class Program {
@@ -10,6 +13,7 @@ namespace TwitchBot {
 		private static readonly Twitch.Client twitchClient = new();
 		private static UserAccessToken? userAccessToken = null;
 
+		// The main entry-point of the program
 		public static async Task Main( string[] arguments ) {
 
 			// Set the persistent data directory

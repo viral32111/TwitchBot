@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Security;
 using System.Security.Cryptography;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.IO;
+using System.Net.Http;
 
 namespace TwitchBot {
 	public static class Cloudflare {

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace TwitchBot.Twitch {
+﻿namespace TwitchBot.Twitch {
 	public class Message {
 		public Channel Channel { get; init; }
 		public User User { get; init; }

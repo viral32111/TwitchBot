@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 // Parses IRC-styled messages
 // https://ircv3.net/specs/extensions/message-tags.html

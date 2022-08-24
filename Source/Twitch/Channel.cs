@@ -1,4 +1,7 @@
-﻿namespace TwitchBot.Twitch {
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace TwitchBot.Twitch {
 	public class Channel {
 		public Dictionary<string, User> Users = new();
 

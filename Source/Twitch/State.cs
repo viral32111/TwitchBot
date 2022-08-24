@@ -1,4 +1,8 @@
-﻿namespace TwitchBot.Twitch {
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace TwitchBot.Twitch {
 	public static class State {
 
 		private static readonly Dictionary<string, GlobalUser> globalUserState = new();
