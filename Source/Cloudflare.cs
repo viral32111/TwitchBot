@@ -91,76 +91,71 @@ namespace TwitchBot {
 
 		}*/
 
-		// Gets the path to the executable file of the client
+		// Gets the path to the executable file of the specific client version for Windows or Linux
 		public static string GetClientPath( string clientVersion ) {
-			// TODO: Download to Config.CacheDirectory instead
-			return Path.Combine( Shared.ApplicationDataDirectory, $"cloudflared-{clientVersion}-windows-amd64.exe" );
+			if ( Shared.IsWindows() ) {
+				return Path.Combine( Config.CacheDirectory, $"cloudflared-{clientVersion}-windows-amd64.exe" );
+			} else {
+				return Path.Combine( Config.CacheDirectory, $"cloudflared-{clientVersion}-linux-amd64" );
+			}
 		}
 
-		public async static Task DownloadClient( string clientVersion, string? clientChecksum ) {
+		// Gets the GitHub release download URL of the specific client version for Windows or Linux
+		public static string GetDownloadUrl( string clientVersion ) {
+			string baseDownloadUrl = $"https://github.com/cloudflare/cloudflared/releases/download/{clientVersion}/";
 
-			//Console.WriteLine( "downloadclient start" );
+			if ( Shared.IsWindows() ) {
+				return string.Concat( baseDownloadUrl, "cloudflared-windows-amd64.exe" );
+			} else {
+				return string.Concat( baseDownloadUrl, "cloudflared-linux-amd64" );
+			}
+		}
 
-			// The file path to the downloaded executable file
+		// Downloads a specific version of the Cloudflare Tunnel client from GitHub
+		public async static Task DownloadClient( string clientVersion, string clientChecksum ) {
+
+			// The file path to store the executable file
 			string executablePath = GetClientPath( clientVersion );
 
-			// Create the application data directory if it does not exist
-			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) Directory.CreateDirectory( Shared.ApplicationDataDirectory );
+			// Create required directories in case they do not exist
+			Shared.CreateDirectories();
 
-			// Repeat forever...
+			// Repeat...
 			do {
 
-				//Console.WriteLine( "downloadinggg" );
-
 				// Download the specified version of the client from GitHub releases
-				HttpResponseMessage downloadResponse = await Shared.httpClient.GetAsync( $"https://github.com/cloudflare/cloudflared/releases/download/{clientVersion}/cloudflared-windows-amd64.exe" );
-
-				//Console.WriteLine( "savinggg" );
+				HttpResponseMessage downloadResponse = await Shared.httpClient.GetAsync( GetDownloadUrl( clientVersion ) );
 
 				// Save the downloaded client into an executable file in the data directory
 				using ( FileStream fileStream = new( executablePath, FileMode.Create, FileAccess.Write ) ) {
 					await downloadResponse.Content.CopyToAsync( fileStream );
 				}
 
-				//Console.WriteLine( "doneee", IsClientDownloaded( clientVersion, clientChecksum ) );
-
 			// ...until the executable is downloaded
-			} while ( IsClientDownloaded( clientVersion, clientChecksum ) == false );
-
-			//Console.WriteLine( "downloadclient donee" );
+			} while ( !IsClientDownloaded( clientVersion, clientChecksum ) );
 
 		}
 
-		public static bool IsClientDownloaded( string clientVersion, string? clientChecksum ) {
+		// Checks if a specific version of the client has already been downloaded
+		public static bool IsClientDownloaded( string clientVersion, string clientChecksum ) {
 
-			// The file path to the downloaded executable file
+			// The file path to store the executable file
 			string executablePath = GetClientPath( clientVersion );
 
-			// Does the executable file exist?
-			if ( File.Exists( executablePath ) ) {
+			// Check failed if the file does not even exist
+			if ( !File.Exists( executablePath ) ) return false;
 
-				// Validate the executable file checksum, if one was provided
-				if ( clientChecksum != null ) {
-					using ( SHA256 sha256 = SHA256.Create() ) {
-						using ( FileStream fileStream = new( executablePath, FileMode.Open, FileAccess.Read ) ) {
+			// Validate the executable file checksum
+			using ( SHA256 sha256 = SHA256.Create() ) {
+				using ( FileStream fileStream = new( executablePath, FileMode.Open, FileAccess.Read ) ) {
 
-							// Calculate the checksum of the executable file
-							string executableChecksum = Convert.ToHexString( sha256.ComputeHash( fileStream ) );
+					// Calculate the checksum of the executable file
+					string executableChecksum = Convert.ToHexString( sha256.ComputeHash( fileStream ) );
 
-							// Do the checksums match?
-							return string.Equals( executableChecksum, clientChecksum, StringComparison.OrdinalIgnoreCase ); ;
+					// Do the checksums match?
+					return string.Equals( executableChecksum, clientChecksum, StringComparison.OrdinalIgnoreCase );
 
-						}
-					}
-
-					// The file exists, but we aren't validating the checksum
-				} else {
-					return true;
 				}
-
-				// The file does not exist
-			} else {
-				return false;
 			}
 
 		}
