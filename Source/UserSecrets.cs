@@ -1,33 +1,45 @@
-﻿using Microsoft.Extensions.Configuration;
-using System;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 
 // https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets
 
 namespace TwitchBot {
 	public class UserSecrets {
-		public string AppClientIdentifier = string.Empty;
-		public string AppClientSecret = string.Empty;
-		public string AccountName = string.Empty;
+
+		public readonly string TwitchOAuthSecret;
+
+		public UserSecrets( IConfigurationRoot secrets ) {
+
+			TwitchOAuthSecret = secrets.GetValue<string>( "AppClientSecret" );
+			if ( string.IsNullOrEmpty( TwitchOAuthSecret ) ) throw new Exception( "User secrets is missing OAuth client secret" );
+
+			PrintDeprecationNotice( secrets, "AppClientIdentifier" );
+			PrintDeprecationNotice( secrets, "AccountName" );
+
+		}
+
+		public static void PrintDeprecationNotice( IConfigurationRoot secrets, string keyName ) {
+			if ( !string.IsNullOrEmpty( secrets.GetValue<string>( keyName ) ) ) {
+				Console.WriteLine( $"The user secret '{keyName}' is deprecated, it should be removed from user secrets." );
+			}
+		}
 
 		public static UserSecrets Load() {
 			ConfigurationBuilder configurationBuilder = new();
 			configurationBuilder.AddUserSecrets<UserSecrets>();
 
-			IConfigurationRoot configuration = configurationBuilder.Build();
+			IConfigurationRoot secrets = configurationBuilder.Build();
 
-			string appClientIdentifier = configuration[ "AppClientIdentifier" ];
-			string appClientSecret = configuration[ "AppClientSecret" ];
-			string accountName = configuration[ "AccountName" ]; // TODO: Fetch this via /users API lookup - https://dev.twitch.tv/docs/api/reference#get-users
-
-			if ( string.IsNullOrEmpty( appClientIdentifier ) ) throw new Exception( "User secrets is missing application client identifier" );
-			if ( string.IsNullOrEmpty( appClientSecret ) ) throw new Exception( "User secrets is missing application client secret" );
-			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "User secrets is missing account name" );
-
-			return new UserSecrets() {
-				AppClientIdentifier = appClientIdentifier,
-				AppClientSecret = appClientSecret,
-				AccountName = accountName
-			};
+			return new( secrets );
 		}
+
+		/*********************************/
+		/***** DEPRECATED PROPERTIES *****/
+		/*********************************/
+
+		[Obsolete( "Use Config.TwitchOAuthIdentifier instead" )] public readonly string AppClientIdentifier = string.Empty;
+		[Obsolete( "Use Config.TwitchOAuthSecret instead" )] public readonly string AppClientSecret = string.Empty;
+		[Obsolete( "Do not use" )] public readonly string AccountName = string.Empty ;
+
 	}
 }

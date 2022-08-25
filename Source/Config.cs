@@ -29,7 +29,7 @@ namespace TwitchBot {
 		// Twitch API
 		public static readonly string TwitchAPIBaseURL;
 
-		// Cloudflare Tunnel
+		// Cloudflare Tunnel client
 		public static readonly string CloudflareTunnelVersion;
 		public static readonly string CloudflareTunnelChecksum;
 
@@ -50,27 +50,42 @@ namespace TwitchBot {
 				configuration = CreateDefaultFile( configFilePath );
 			}
 
+			// Populate directory configuration
+			// NOTE: Environment variables such as %APPDATA% on Windows are parsed here
 			DataDirectory = Environment.ExpandEnvironmentVariables( GetString( "directory.data" ) );
 			CacheDirectory = Environment.ExpandEnvironmentVariables( GetString( "directory.cache" ) );
 
+			// Populate Twitch OAuth configuration, except from the client secret
 			TwitchOAuthBaseURL = GetString( "twitch.oauth.url" );
 			TwitchOAuthIdentifier = GetString( "twitch.oauth.identifier" );
-			TwitchOAuthSecret = GetString( "twitch.oauth.secret" ); // This needs to fallback to retrieving from user secrets, or maybe it should try user secrets first
 			TwitchOAuthRedirectURL = GetString( "twitch.oauth.redirect" );
 
+			// Populate Twitch Chat IRC configuration
 			TwitchChatBaseURL = GetString( "twitch.chat.url" );
 			TwitchChatPrimaryChannelName = GetString( "twitch.chat.channel" );
 
+			// Populate Twitch API configuration
 			TwitchAPIBaseURL = GetString( "twitch.api.url" );
 
+			// Populate Cloudflare Tunnel client configuration
 			CloudflareTunnelVersion = GetString( "cloudflare.tunnel.version" );
 			CloudflareTunnelChecksum = GetString( "cloudflare.tunnel.checksum" );
+
+			// Try to retrieve the Twitch OAuth client secret from the configuration
+			JsonValue? twitchOAuthSecret = GetValue( "twitch.oauth.secret" );
+			if ( twitchOAuthSecret != null ) {
+				TwitchOAuthSecret = twitchOAuthSecret.ToString();
+
+			// Otherwise, fallback to the user secrets store
+			} else {
+				UserSecrets secrets = UserSecrets.Load();
+				TwitchOAuthSecret = secrets.TwitchOAuthSecret;
+			}
 
 		}
 
 		// Retrieves a nested property from the configuration
-		// NOTE: This throws an error if the property does not exist, which is intentional behaviour
-		private static JsonValue GetValue( string path ) {
+		private static JsonValue? GetValue( string path ) {
 
 			// Split the nested path up into individual property names
 			List<string> propertyNames = path.Split( '.' ).ToList();
@@ -86,19 +101,17 @@ namespace TwitchBot {
 
 				// Attempt to retreive the property from the previous JSON object
 				if ( !previousJsonObject.TryGetPropertyValue( propertyName, out JsonNode? propertyValue ) ) {
-					throw new Exception( $"Property '{propertyName}' in '{path}' does not exist" );
+					return null;
 				}
 
-				// Error if the retreived property value is null
-				if ( propertyValue == null ) {
-					throw new Exception( $"Property '{propertyName}' in '{path}' is null" );
-				}
+				// Return nothing if the retreived property value is null
+				if ( propertyValue == null ) return null;
 
 				// Return this property as a value if this is the last iteration
 				if ( propertyNames.Count == 1 ) {
 					return propertyValue.AsValue();
 
-					// Otherwise, store this property as a JSON object for the next iteration
+				// Otherwise, store this property as a JSON object for the next iteration
 				} else {
 					previousJsonObject = propertyValue.AsObject();
 				}
@@ -108,14 +121,24 @@ namespace TwitchBot {
 
 			}
 
-			// Error to catch any unexpected behaviour if there never was a return
-			throw new Exception( $"Could not find property '{path}'" );
+			// Return nothing if no value was returned
+			return null;
 
 		}
 
-		// Retrieves a string value from the configuration 
+		// Retrieves a string value from the configuration
+		// NOTE: This throws an error if the property does not exist, which is intentional behaviour
 		public static string GetString( string path ) {
-			return GetValue( path ).ToString();
+
+			// Retrieve the property value at the provided path
+			JsonValue? value = GetValue( path );
+
+			// Error if the value does not exist
+			if ( value == null ) throw new Exception( $"Could not find string property '{path}' in configuration" );
+
+			// Return the value as a string
+			return value.ToString();
+
 		}
 
 		// Loads a JSON structure from a file
