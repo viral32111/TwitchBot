@@ -150,8 +150,8 @@ namespace TwitchBot {
 			// Define the default configuration values
 			JsonObject defaultConfiguration = new() {
 				[ "directory" ] = new JsonObject() {
-					[ "data" ] = RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ? "%LOCALAPPDATA%\\twitch-bot" : "/var/lib/twitch-bot",
-					[ "cache" ] = RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ? "%TEMP%\\twitch-bot" : "/var/cache/twitch-bot",
+					[ "data" ] = RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ? "%LOCALAPPDATA%\\TwitchBot" : "/var/lib/twitch-bot",
+					[ "cache" ] = RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ? "%TEMP%\\TwitchBot" : "/var/cache/twitch-bot",
 				},
 				[ "twitch" ] = new JsonObject() {
 					[ "oauth" ] = new JsonObject() {
