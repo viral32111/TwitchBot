@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -9,8 +11,12 @@ namespace TwitchBot {
 
 		public static readonly HttpClient httpClient = new();
 		[Obsolete( "Use Config.DataDirectory instead" )] public static string ApplicationDataDirectory = string.Empty;
-		public static UserSecrets UserSecrets = new();
+		[Obsolete( "Do not use" )] public static readonly UserSecrets UserSecrets;
 		
+		static Shared() {
+			UserSecrets = UserSecrets.Load();
+		}
+
 		public static string GenerateRandomString( int length ) {
 			StringBuilder builder = new( length );
 
@@ -18,5 +24,28 @@ namespace TwitchBot {
 
 			return builder.ToString();
 		}
+
+		// Checks if the current operating system is Windows
+		public static bool IsWindows() {
+			return RuntimeInformation.IsOSPlatform( OSPlatform.Windows );
+		}
+
+		// Creates required directories if they do not exist
+		public static void CreateDirectories() {
+
+			// Create the persistent data directory
+			if ( !Directory.Exists( Config.DataDirectory ) ) {
+				Directory.CreateDirectory( Config.DataDirectory );
+				Log.Info( "Created data directory: '{0}'.", Config.DataDirectory );
+			}
+
+			// Create the cache directory
+			if ( !Directory.Exists( Config.CacheDirectory ) ) {
+				Directory.CreateDirectory( Config.CacheDirectory );
+				Log.Info( "Created cache directory: '{0}'.", Config.CacheDirectory );
+			}
+
+		}
+
 	}
 }

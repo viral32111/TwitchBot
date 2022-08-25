@@ -20,7 +20,7 @@ namespace TwitchBot {
 
 		public static void PrintDeprecationNotice( IConfigurationRoot secrets, string keyName ) {
 			if ( !string.IsNullOrEmpty( secrets.GetValue<string>( keyName ) ) ) {
-				Console.WriteLine( $"The user secret '{keyName}' is deprecated, it should be removed from user secrets." );
+				Log.Warn( $"The user secret '{keyName}' is deprecated, it should be removed from user secrets." );
 			}
 		}
 
@@ -39,7 +39,7 @@ namespace TwitchBot {
 
 		[Obsolete( "Use Config.TwitchOAuthIdentifier instead" )] public readonly string AppClientIdentifier = string.Empty;
 		[Obsolete( "Use Config.TwitchOAuthSecret instead" )] public readonly string AppClientSecret = string.Empty;
-		[Obsolete( "Do not use" )] public readonly string AccountName = string.Empty ;
+		[Obsolete( "Do not use" )] public readonly string AccountName = string.Empty;
 
 	}
 }
