@@ -14,38 +14,27 @@ namespace TwitchBot {
 		private static UserAccessToken? userAccessToken = null;
 
 		// The main entry-point of the program
-		public static async Task Main( string[] arguments ) {
+		public static async Task Main() {
 
-			// Set the persistent data directory
-			// NOTE: Does not work on Linux!
-			Shared.ApplicationDataDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), Config.ApplicationDataDirectory );
-			if ( !Directory.Exists( Shared.ApplicationDataDirectory ) ) Directory.CreateDirectory( Shared.ApplicationDataDirectory );
-			Log.Write( "Persistent data directory is: '{0}'.", Shared.ApplicationDataDirectory );
+			// Display directory paths for convenience
+			Log.Info( "Data directory is: '{0}'.", Config.DataDirectory );
+			Log.Info( "Cache directory is: '{0}'.", Config.CacheDirectory );
 
-			// Load .NET user secrets (application credentials)
-			// TODO: Only run this in debug mode, otherwise load secrets from command-line arguments
-			try {
-				Shared.UserSecrets = UserSecrets.Load();
-				Log.Write( "Loaded the user secrets for this application." );
-			} catch ( Exception exception ) {
-				Log.Write( "Failed to load user secrets: '{0}'.", exception.Message );
-				Environment.Exit( 1 );
-				return;
-			}
-			
-			// Download Cloudflare Tunnel client
-			if ( Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) == false ) {
-				Log.Write( "Cloudflare Tunnel client does not exist or is invalid, downloading version {0}...", Config.CloudflareTunnelVersion );
+			// Create required directories
+			Shared.CreateDirectories();
+
+			// Download the Cloudflare Tunnel client
+			if ( !Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) ) {
+				Log.Info( "Cloudflare Tunnel client does not exist or is corrupt, downloading version {0}...", Config.CloudflareTunnelVersion );
 				await Cloudflare.DownloadClient( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum );
-				Log.Write( "Cloudflare Tunnel client downloaded to: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
+				Log.Info( "Cloudflare Tunnel client downloaded to: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			} else {
-				Log.Write( "Using existing Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
+				Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			}
 
-			// Start a Cloudflare Tunnel
-			Log.Write( "Starting Cloudflare Tunnel..." );
-			Uri tunnelUrl = Cloudflare.StartTunnel( Config.CloudflareTunnelVersion );
-			Log.Write( "Cloudflare Tunnel running at: '{0}'.", tunnelUrl.ToString() );
+			Environment.Exit( 1 );
+			return;
+
 
 			// Attempt to load an existing user access token from disk
 			try {
@@ -53,19 +42,19 @@ namespace TwitchBot {
 
 				// If the token is no longer valid, then refresh & save it
 				if ( !await userAccessToken.IsValid() ) {
-					Log.Write( "The user access token is no longer valid. Refreshing it..." );
+					Log.Info( "The user access token is no longer valid. Refreshing it..." );
 					await userAccessToken.Refresh();
 
-					Log.Write( "Saving the updated user access token..." );
+					Log.Info( "Saving the updated user access token..." );
 					await userAccessToken.Save();
 				}
 
 			// If loading an existing token fails, then request & save a fresh one
 			} catch ( Exception exception ) {
-				Log.Write( "Failed to load the user access token: '{0}'. Requesting a new one...", exception.Message );
+				Log.Info( "Failed to load the user access token: '{0}'. Requesting a new one...", exception.Message );
 				userAccessToken = await UserAccessToken.Request( new string[] { "chat:read", "chat:edit" } );
 
-				Log.Write( "Saving the new user access token..." );
+				Log.Info( "Saving the new user access token..." );
 				await userAccessToken.Save();
 			}
 
@@ -78,27 +67,27 @@ namespace TwitchBot {
 			twitchClient.OnChatMessage += OnChatMessage;
 			twitchClient.OnUserUpdate += OnUserUpdate;
 			twitchClient.OnChannelUpdate += OnChannelUpdate;
-			Log.Write( "Registered Twitch client event handlers." );
+			Log.Info( "Registered Twitch client event handlers." );
 
 			consoleCtrlHandler += new EventHandler( OnApplicationExit );
 			SetConsoleCtrlHandler( consoleCtrlHandler, true );
-			Log.Write( "Registered application exit event handler." );
+			Log.Info( "Registered application exit event handler." );
 
 			// Connect to Twitch chat
 			// NOTE: Blocks until the connection is closed
-			Log.Write( "Connecting to Twitch chat..." );
+			Log.Info( "Connecting to Twitch chat..." );
 			twitchClient.Connect( Config.ChatServerAddress, Config.ChatServerPort );
 
 		}
 
 		private static bool OnApplicationExit( CtrlType signal ) {
-			Log.Write( "Stopping Cloudflare Tunnel client..." );
+			Log.Info( "Stopping Cloudflare Tunnel client..." );
 			Cloudflare.StopTunnel();
 
-			Log.Write( "Disconnecting..." );
+			Log.Info( "Disconnecting..." );
 			twitchClient.Disconnect().Wait();
 
-			Log.Write( "Exiting..." );
+			Log.Info( "Exiting..." );
 			Environment.Exit( 0 );
 
 			return false;
@@ -107,36 +96,36 @@ namespace TwitchBot {
 		private static async Task OnConnect( object sender, EventArgs e ) {
 			if ( userAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
-			Log.Write( "Requesting capabilities..." );
+			Log.Info( "Requesting capabilities..." );
 			await twitchClient.RequestCapabilities( new string[] {
 				Twitch.Capability.Commands,
 				Twitch.Capability.Membership,
 				Twitch.Capability.Tags
 			} );
 
-			Log.Write( "Authenticating..." );
+			Log.Info( "Authenticating..." );
 			await twitchClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
 		}
 
 		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {
-			Log.Write( "Ready as user '{0}' ({1}).", e.User.Name, e.User.Identifier );
+			Log.Info( "Ready as user '{0}' ({1}).", e.User.Name, e.User.Identifier );
 
-			Log.Write( "Joining channel '{0}'...", Config.ChannelName );
+			Log.Info( "Joining channel '{0}'...", Config.ChannelName );
 			await twitchClient.JoinChannel( Config.ChannelName );
 		}
 
 		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
-			Log.Write( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
+			Log.Info( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 
 			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
 		}
 
 		private static async Task OnChannelLeave( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
-			Log.Write( "User '{0}' left channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
+			Log.Info( "User '{0}' left channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 		}
 
 		private static async Task OnChatMessage( object sender, Twitch.OnChatMessageEventArgs e ) {
-			Log.Write( "User '{0}' in '{1}' said '{2}'.", e.Message.User.Global.Name, e.Message.Channel.Name, e.Message.Content );
+			Log.Info( "User '{0}' in '{1}' said '{2}'.", e.Message.User.Global.Name, e.Message.Channel.Name, e.Message.Content );
 
 			if ( e.Message.Content == "!hello" ) {
 				await e.Message.Channel.Send( twitchClient, "Hello World!" );
@@ -157,36 +146,36 @@ namespace TwitchBot {
 		}
 
 		private static async Task OnUserUpdate( object sender, Twitch.OnUserUpdateEventArgs e ) {
-			Log.Write( "User '{0}' ({1}) updated.", e.User.Global.Name, e.User.Global.Identifier );
-			Log.Write( " Type: '{0}'", e.User.Global.Type );
-			Log.Write( " Color: '{0}'", e.User.Global.Color );
-			Log.Write( " Badges: '{0}'", e.User.Global.Badges != null ? string.Join( ',', e.User.Global.Badges ) : null );
-			Log.Write( " Badge Information: '{0}'", e.User.Global.BadgeInformation );
-			Log.Write( " Emote Sets: '{0}'", e.User.Global.EmoteSets != null ? string.Join( ',', e.User.Global.EmoteSets ) : null );
-			Log.Write( " Channel: '{0}'", e.User.Channel.Name );
-			Log.Write( "  Is Moderator: '{0}'", e.User.IsModerator );
-			Log.Write( "  Is Subscriber: '{0}'", e.User.IsSubscriber );
+			Log.Info( "User '{0}' ({1}) updated.", e.User.Global.Name, e.User.Global.Identifier );
+			Log.Info( " Type: '{0}'", e.User.Global.Type );
+			Log.Info( " Color: '{0}'", e.User.Global.Color );
+			Log.Info( " Badges: '{0}'", e.User.Global.Badges != null ? string.Join( ',', e.User.Global.Badges ) : null );
+			Log.Info( " Badge Information: '{0}'", e.User.Global.BadgeInformation );
+			Log.Info( " Emote Sets: '{0}'", e.User.Global.EmoteSets != null ? string.Join( ',', e.User.Global.EmoteSets ) : null );
+			Log.Info( " Channel: '{0}'", e.User.Channel.Name );
+			Log.Info( "  Is Moderator: '{0}'", e.User.IsModerator );
+			Log.Info( "  Is Subscriber: '{0}'", e.User.IsSubscriber );
 		}
 
 		private static async Task OnChannelUpdate( object sender, Twitch.OnChannelUpdateEventArgs e ) {
-			Log.Write( "Channel '{0}' ({1}) updated.", e.Channel.Name, e.Channel.Identifier );
-			Log.Write( " Is Emote Only: '{0}'", e.Channel.IsEmoteOnly );
-			Log.Write( " Is Followers Only: '{0}'", e.Channel.IsFollowersOnly );
-			Log.Write( " Is Subscribers Only: '{0}'", e.Channel.IsSubscribersOnly );
-			Log.Write( " Is R9K: '{0}'", e.Channel.IsR9K );
-			Log.Write( " Is Rituals: '{0}'", e.Channel.IsRituals );
+			Log.Info( "Channel '{0}' ({1}) updated.", e.Channel.Name, e.Channel.Identifier );
+			Log.Info( " Is Emote Only: '{0}'", e.Channel.IsEmoteOnly );
+			Log.Info( " Is Followers Only: '{0}'", e.Channel.IsFollowersOnly );
+			Log.Info( " Is Subscribers Only: '{0}'", e.Channel.IsSubscribersOnly );
+			Log.Info( " Is R9K: '{0}'", e.Channel.IsR9K );
+			Log.Info( " Is Rituals: '{0}'", e.Channel.IsRituals );
 		}
 
 		private static async Task OnError( object sender, Twitch.OnErrorEventArgs e ) {
-			Log.Write( "An error has occurred: '{0}'.", e.Message );
+			Log.Info( "An error has occurred: '{0}'.", e.Message );
 
-			Log.Write( "Stopping Cloudflare Tunnel client..." );
+			Log.Info( "Stopping Cloudflare Tunnel client..." );
 			Cloudflare.StopTunnel(); // TODO: Kill tunnel on error?
 
-			Log.Write( "Disconnecting..." );
+			Log.Info( "Disconnecting..." );
 			await twitchClient.Disconnect();
 
-			Log.Write( "Exiting..." );
+			Log.Info( "Exiting..." );
 			Environment.Exit( 1 );
 		}
 	}

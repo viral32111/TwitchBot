@@ -129,13 +129,13 @@ namespace TwitchBot {
 
 			Task<string?> authorizationTask = HandleAuthorizationRedirects( stateSecret, scopes );
 
-			Log.Write( "Waiting for the authorization to complete..." );
+			Log.Info( "Waiting for the authorization to complete..." );
 			authorizationTask.Wait();
 
 			string? authorizationCode = authorizationTask.Result;
 			if ( string.IsNullOrEmpty( authorizationCode ) ) throw new Exception( "Authorization code is null or empty" );
 
-			Log.Write( "The authorization has completed. Granting user access token..." );
+			Log.Info( "The authorization has completed. Granting user access token..." );
 			UserAccessToken userAccessToken = await Grant( authorizationCode );
 
 			return userAccessToken;

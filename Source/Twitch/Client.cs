@@ -159,17 +159,17 @@ namespace TwitchBot.Twitch {
 					// Remove the account name from the start of the parameters value
 					string parameters = ( message.Parameters.StartsWith( $"{accountName.ToLower()} :" ) ? message.Parameters[ ( accountName.Length + 2 ).. ] : message.Parameters );
 
-					if ( message.Command == InternetRelayChat.Command.Welcome ) Log.Write( "The server welcomes us." );
+					if ( message.Command == InternetRelayChat.Command.Welcome ) Log.Info( "The server welcomes us." );
 
 					if ( message.Command == InternetRelayChat.Command.YourHost ) {
 						Match hostMatch = HostPattern.Match( parameters );
 						if ( hostMatch.Success ) {
 							ExpectedHost = hostMatch.Groups[ 1 ].Value;
-							Log.Write( "The expected host is now: '{0}'", ExpectedHost );
+							Log.Info( "The expected host is now: '{0}'", ExpectedHost );
 						}
 					}
 
-					if ( message.Command == InternetRelayChat.Command.MoTD ) Log.Write( "MoTD: '{0}'", parameters );
+					if ( message.Command == InternetRelayChat.Command.MoTD ) Log.Info( "MoTD: '{0}'", parameters );
 
 				} else {
 					if ( message.Command == Command.GlobalUserState ) {
@@ -306,9 +306,9 @@ namespace TwitchBot.Twitch {
 						userNames.Remove( Shared.UserSecrets.AccountName.ToLower() );
 
 						if ( userNames.Count == 0 ) {
-							Log.Write( "No users are in the channel with us." );
+							Log.Info( "No users are in the channel with us." );
 						} else {
-							Log.Write( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
+							Log.Info( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
 						}
 					
 					} else if ( message.Command == InternetRelayChat.Command.NamesEnd && message.Parameters != null ) {
