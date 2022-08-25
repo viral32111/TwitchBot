@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -39,7 +40,7 @@ namespace TwitchBot {
 			string[] arguments = Environment.GetCommandLineArgs();
 
 			// Use the first argument as the configuration file path, or default to a file in the current working directory
-			string configFilePath = arguments[ 0 ] ?? "twitch-bot.json";
+			string configFilePath = arguments.Length >= 2 ? arguments[ 1 ] : "twitch-bot.json";
 
 			// Load (or create) the configuration from the above file
 			// TODO: Check for missing keys, add them if required, and save to file (may be missing due to user error, or older version of the configuration structure)
@@ -49,8 +50,8 @@ namespace TwitchBot {
 				configuration = CreateDefaultFile( configFilePath );
 			}
 
-			DataDirectory = GetString( "directory.data" );
-			CacheDirectory = GetString( "directory.cache" );
+			DataDirectory = Environment.ExpandEnvironmentVariables( GetString( "directory.data" ) );
+			CacheDirectory = Environment.ExpandEnvironmentVariables( GetString( "directory.cache" ) );
 
 			TwitchOAuthBaseURL = GetString( "twitch.oauth.url" );
 			TwitchOAuthIdentifier = GetString( "twitch.oauth.identifier" );
@@ -149,8 +150,8 @@ namespace TwitchBot {
 			// Define the default configuration values
 			JsonObject defaultConfiguration = new() {
 				[ "directory" ] = new JsonObject() {
-					[ "data" ] = "%LOCALAPPDATA%/twitch-bot",
-					[ "cache" ] = "%TEMP%"
+					[ "data" ] = RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ? "%LOCALAPPDATA%\\twitch-bot" : "/var/lib/twitch-bot",
+					[ "cache" ] = RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ? "%TEMP%\\twitch-bot" : "/var/cache/twitch-bot",
 				},
 				[ "twitch" ] = new JsonObject() {
 					[ "oauth" ] = new JsonObject() {
