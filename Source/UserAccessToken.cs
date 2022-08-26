@@ -41,7 +41,7 @@ namespace TwitchBot {
 		// https://dev.twitch.tv/docs/authentication/validate-tokens
 		public async Task<bool> IsValid() {
 			Shared.httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "OAuth", AccessToken );
-			HttpResponseMessage validateResponse = await Shared.httpClient.GetAsync( $"{Config.OAuthBaseURI}/validate" );
+			HttpResponseMessage validateResponse = await Shared.httpClient.GetAsync( $"https://{Config.TwitchOAuthBaseURL}/validate" );
 
 			//Stream responseStream = await validateResponse.Content.ReadAsStreamAsync();
 			//JsonDocument responseDocument = await JsonDocument.ParseAsync( responseStream );
@@ -52,9 +52,9 @@ namespace TwitchBot {
 
 		// https://dev.twitch.tv/docs/authentication/refresh-tokens
 		public async Task Refresh() {
-			HttpResponseMessage refreshResponse = await Shared.httpClient.PostAsync( $"{Config.OAuthBaseURI}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
-				{ "client_id", Shared.UserSecrets.AppClientIdentifier },
-				{ "client_secret", Shared.UserSecrets.AppClientSecret },
+			HttpResponseMessage refreshResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+				{ "client_id", Config.TwitchOAuthIdentifier },
+				{ "client_secret", Config.TwitchOAuthSecret },
 				{ "grant_type", "refresh_token" },
 				{ "refresh_token", RefreshToken },
 			} ) );
@@ -113,10 +113,10 @@ namespace TwitchBot {
 		public static async Task<UserAccessToken> Request( string[] scopes ) {
 			string stateSecret = Shared.GenerateRandomString( 16 );
 
-			string authorizationUrl = QueryHelpers.AddQueryString( $"{Config.OAuthBaseURI}/authorize", new Dictionary<string, string?>() {
-				{ "client_id", Shared.UserSecrets.AppClientIdentifier },
+			string authorizationUrl = QueryHelpers.AddQueryString( $"https://{Config.TwitchOAuthBaseURL}/authorize", new Dictionary<string, string?>() {
+				{ "client_id", Config.TwitchOAuthIdentifier },
 				{ "force_verify", "true" },
-				{ "redirect_uri", Config.OAuthRedirectURI },
+				{ "redirect_uri", Config.TwitchOAuthRedirectURL },
 				{ "response_type", "code" },
 				{ "scope", string.Join( ' ', scopes ) }, // https://dev.twitch.tv/docs/authentication/scopes
 				{ "state", stateSecret }
@@ -124,7 +124,7 @@ namespace TwitchBot {
 
 			Console.WriteLine( $"Please open this URL in your browser to authorize this application to use your Twitch account: {authorizationUrl}" );
 
-			redirectListener.Prefixes.Add( $"{Config.OAuthRedirectURI}/" );
+			redirectListener.Prefixes.Add( $"{Config.TwitchOAuthRedirectURL}/" );
 			redirectListener.Start();
 
 			Task<string?> authorizationTask = HandleAuthorizationRedirects( stateSecret, scopes );
@@ -219,12 +219,12 @@ namespace TwitchBot {
 		}
 
 		private static async Task<UserAccessToken> Grant( string authorizationCode ) {
-			HttpResponseMessage grantResponse = await Shared.httpClient.PostAsync( $"{Config.OAuthBaseURI}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
-				{ "client_id", Shared.UserSecrets.AppClientIdentifier },
-				{ "client_secret", Shared.UserSecrets.AppClientSecret },
+			HttpResponseMessage grantResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+				{ "client_id", Config.TwitchOAuthIdentifier },
+				{ "client_secret", Config.TwitchOAuthSecret },
 				{ "code", authorizationCode },
 				{ "grant_type", "authorization_code" },
-				{ "redirect_uri", Config.OAuthRedirectURI },
+				{ "redirect_uri", Config.TwitchOAuthRedirectURL },
 			} ) );
 
 			Stream responseStream = await grantResponse.Content.ReadAsStreamAsync();

@@ -110,8 +110,8 @@ namespace TwitchBot {
 		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {
 			Log.Info( "Ready as user '{0}' ({1}).", e.User.Name, e.User.Identifier );
 
-			Log.Info( "Joining channel '{0}'...", Config.ChannelName );
-			await twitchClient.JoinChannel( Config.ChannelName );
+			Log.Info( "Joining channel '{0}'...", Config.TwitchChatPrimaryChannelName );
+			await twitchClient.JoinChannel( Config.TwitchChatPrimaryChannelName );
 		}
 
 		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {

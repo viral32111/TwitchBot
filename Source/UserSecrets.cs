@@ -30,13 +30,5 @@ namespace TwitchBot {
 			}
 		}
 
-		/*********************************/
-		/***** DEPRECATED PROPERTIES *****/
-		/*********************************/
-
-		[Obsolete( "Use Config.TwitchOAuthIdentifier instead" )] public static readonly string AppClientIdentifier = string.Empty;
-		[Obsolete( "Use Config.TwitchOAuthSecret instead" )] public static readonly string AppClientSecret = string.Empty;
-		[Obsolete( "Do not use" )] public static readonly string AccountName = string.Empty;
-
 	}
 }
