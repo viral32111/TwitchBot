@@ -11,11 +11,6 @@ namespace TwitchBot {
 
 		public static readonly HttpClient httpClient = new();
 		[Obsolete( "Use Config.DataDirectory instead" )] public static string ApplicationDataDirectory = string.Empty;
-		[Obsolete( "Do not use" )] public static readonly UserSecrets UserSecrets;
-		
-		static Shared() {
-			UserSecrets = UserSecrets.Load();
-		}
 
 		public static string GenerateRandomString( int length ) {
 			StringBuilder builder = new( length );
