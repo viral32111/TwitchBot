@@ -10,7 +10,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Web;
-using TwitchBot.Files;
 
 // Authorization code grant flow & implicit grant flow (unused)
 
@@ -38,10 +37,10 @@ namespace TwitchBot.Twitch.OAuth {
 
 			TokenType tokenType;
 			try {
-				 tokenType = ( TokenType ) storage.Get<int>( "type" );
+				tokenType = ( TokenType ) storage.Get<int>( "type" );
 			} catch { // Backwards compatibility as old file had type as string not integer
 				string oldTokenType = storage.Get<string>( "type" );
-				
+
 				if ( oldTokenType == "bearer" ) {
 					tokenType = TokenType.Bearer;
 				} else {
@@ -54,7 +53,7 @@ namespace TwitchBot.Twitch.OAuth {
 			string accessToken = storage.Get<string>( "access" );
 			string refreshToken = storage.Get<string>( "refresh" );
 			DateTimeOffset expiresAt = DateTimeOffset.FromUnixTimeSeconds( storage.Get<long>( "expires" ) );
-			
+
 			string[] scopes;
 			try {
 				scopes = storage.Get<string[]>( "scopes" );
@@ -64,7 +63,7 @@ namespace TwitchBot.Twitch.OAuth {
 			}
 
 			UserAccessToken userAccessToken = new( tokenType, accessToken, expiresAt, refreshToken, scopes );
-	
+
 			if ( isOldFile ) userAccessToken.Save( filePath ); // Update file if it triggered backwards compatibility loading
 
 			return userAccessToken;

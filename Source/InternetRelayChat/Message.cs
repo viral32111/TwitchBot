@@ -53,7 +53,7 @@ namespace TwitchBot.InternetRelayChat {
 		}
 
 		public override string ToString() {
-			return $"{( Tags != null ? $"@{TagsToString()} " : "" )}{( Host != null ? ":" + ( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host ) + " " : "" )}{Command}{(Parameters != null ? " :" + Parameters : "")}";
+			return $"{( Tags != null ? $"@{TagsToString()} " : "" )}{( Host != null ? ":" + ( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host ) + " " : "" )}{Command}{( Parameters != null ? " :" + Parameters : "" )}";
 		}
 
 		public static Message[] Parse( string rawMessage ) {

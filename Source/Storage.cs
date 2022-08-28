@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json.Nodes;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TwitchBot {
 	public class Storage {
@@ -87,20 +87,20 @@ namespace TwitchBot {
 			if ( typeof( T ) == typeof( string ) ) {
 				return ( T ) ( object ) propertyValue.ToString();
 
-			// Return the type as a integer
+				// Return the type as a integer
 			} else if ( typeof( T ) == typeof( int ) ) {
 				return ( T ) ( object ) ( int ) propertyValue.AsValue();
 
-			// Return the type as a long
+				// Return the type as a long
 			} else if ( typeof( T ) == typeof( long ) ) {
 				return ( T ) ( object ) ( long ) propertyValue.AsValue();
 
-			// Return the value as a string array
+				// Return the value as a string array
 			} else if ( typeof( T ) == typeof( string[] ) ) {
 				return ( T ) ( object ) propertyValue.AsArray().ToArray();
 
-			// Error if the type is unhandled
-			// TODO: Fallback to cast here as some types only need that
+				// Error if the type is unhandled
+				// TODO: Fallback to cast here as some types only need that
 			} else {
 				throw new Exception( "Unhandled property data type" );
 			}

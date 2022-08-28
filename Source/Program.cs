@@ -3,7 +3,6 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
@@ -69,15 +68,11 @@ namespace TwitchBot {
 			}
 
 			// Fetch this account's name
-			JsonObject userResponse = await API.Request( "users" );
+			JsonObject userResponse = await Twitch.API.Request( "users" );
 			string? accountName = userResponse[ "data" ]?[ 0 ]?[ "display_name" ]?.ToString();
 			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "Failed to fetch account name." );
 			Shared.MyAccountName = accountName;
 			Log.Info( "My account name is: '{0}' ({1}, {2}).", Shared.MyAccountName, userResponse[ "data" ]?[ 0 ]?[ "id" ]?.ToString(), userResponse[ "data" ]?[ 0 ]?[ "created_at" ]?.ToString() );
-
-			Environment.Exit( 1 );
-			return;
-
 
 			// Register event handlers for the Twitch client
 			twitchClient.OnError += OnError;
@@ -97,7 +92,7 @@ namespace TwitchBot {
 			// Connect to Twitch chat
 			// NOTE: Blocks until the connection is closed
 			Log.Info( "Connecting to Twitch chat..." );
-			twitchClient.Connect( Config.ChatServerAddress, Config.ChatServerPort );
+			twitchClient.Connect( Config.TwitchChatBaseURL );
 
 		}
 

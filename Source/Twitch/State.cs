@@ -14,7 +14,7 @@ namespace TwitchBot.Twitch {
 			// Identifiers
 			tags.TryGetValue( "display-name", out string? displayName );
 			tags.TryGetValue( "user-id", out string? userId ); // Included in GLOBALUSERSTATE
-			
+
 			if ( displayName == null && userId == null ) throw new Exception( "Cannot update user in state without any identifying tags" );
 
 			// Properties
@@ -42,7 +42,7 @@ namespace TwitchBot.Twitch {
 			if ( currentUser != null ) {
 				if ( !string.IsNullOrEmpty( displayName ) ) currentUser.Name = displayName;
 				if ( userId != null ) currentUser.Identifier = int.Parse( userId );
-				
+
 				if ( !string.IsNullOrEmpty( userType ) ) currentUser.Type = userType;
 				if ( !string.IsNullOrEmpty( color ) ) currentUser.Color = color;
 				if ( !string.IsNullOrEmpty( badges ) ) currentUser.Badges = badges?.Split( ',' );
@@ -51,7 +51,7 @@ namespace TwitchBot.Twitch {
 
 				return currentUser;
 
-			// User does not exist in state yet...
+				// User does not exist in state yet...
 			} else {
 				if ( string.IsNullOrEmpty( displayName ) ) throw new Exception( "Cannot create new user in state without name" );
 
@@ -107,7 +107,7 @@ namespace TwitchBot.Twitch {
 			tags.TryGetValue( "r9k", out string? r9k );
 			tags.TryGetValue( "rituals", out string? rituals );
 			tags.TryGetValue( "slow", out string? slow );
-			
+
 
 			if ( currentChannel != null ) {
 				if ( !string.IsNullOrEmpty( roomId ) ) currentChannel.Identifier = int.Parse( roomId );

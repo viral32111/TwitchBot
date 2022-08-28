@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -11,7 +10,6 @@ namespace TwitchBot {
 		private static readonly string randomCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 		public static readonly HttpClient httpClient = new();
-		[Obsolete( "Use Config.DataDirectory instead" )] public static string ApplicationDataDirectory = string.Empty;
 
 		public static string? MyAccountName;
 		public static UserAccessToken? UserAccessToken;

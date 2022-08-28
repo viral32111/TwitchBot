@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using System;
 using System.Reflection;
-using Microsoft.Extensions.Configuration;
 
 // https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets
 

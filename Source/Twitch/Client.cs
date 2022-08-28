@@ -78,13 +78,13 @@ namespace TwitchBot.Twitch {
 
 		// Synchronous function to connect to the websocket server, or timeout after a specified period
 		// NOTE: This blocks until the connection is over, which is intended behavior to keep the application running
-		public void Connect( string serverAddress, int serverPort = 80, bool connectInsecurely = false, int timeoutSeconds = 10 ) {
+		public void Connect( string serverUrl, bool connectInsecurely = false, int timeoutSeconds = 10 ) {
 			if ( wsClient.State != WebSocketState.None ) {
 				OnError?.Invoke( this, new OnErrorEventArgs( "Attempt to connect while already connected" ) );
 				return;
 			}
 
-			Uri serverUri = new( $"{( connectInsecurely ? "ws" : "wss" )}://{serverAddress}:{serverPort}" );
+			Uri serverUri = new( $"{( connectInsecurely ? "ws" : "wss" )}://{serverUrl}" );
 			Task connectTask = wsClient.ConnectAsync( serverUri, CancellationToken.None );
 
 			Task<Task> raceTask = Task.WhenAny( connectTask, Task.Delay( timeoutSeconds * 1000 ) );
@@ -310,7 +310,7 @@ namespace TwitchBot.Twitch {
 						} else {
 							Log.Info( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
 						}
-					
+
 					} else if ( message.Command == InternetRelayChat.Command.NamesEnd && message.Parameters != null ) {
 						// Ignore
 
@@ -318,7 +318,7 @@ namespace TwitchBot.Twitch {
 						Console.WriteLine( "Unexpected Command Message: '{0}'", message.ToString() );
 					}
 
-				// User
+					// User
 				} else if ( message.User != null ) {
 					if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Parameters != null && message.Tags != null ) {
 						string[] parameters = message.Parameters.Split( ':', 2 );
@@ -390,6 +390,6 @@ namespace TwitchBot.Twitch {
 		public User User { get; init; }
 		public bool IsMe { get; init; }
 
-		public OnChannelJoinLeaveEventArgs( User user, bool isMe = false ) => ( User, IsMe ) = ( user, isMe );
+		public OnChannelJoinLeaveEventArgs( User user, bool isMe = false ) => (User, IsMe) = (user, isMe);
 	}
 }

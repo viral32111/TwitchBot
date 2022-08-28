@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Security.Cryptography;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace TwitchBot {
 	public static class Cloudflare {
@@ -21,7 +21,7 @@ namespace TwitchBot {
 				RedirectStandardInput = false,
 				UseShellExecute = false,
 				CreateNoWindow = true,
-				
+
 			};
 
 			tunnelClient = Process.Start( startInfo );
@@ -131,7 +131,7 @@ namespace TwitchBot {
 					await downloadResponse.Content.CopyToAsync( fileStream );
 				}
 
-			// ...until the executable is downloaded
+				// ...until the executable is downloaded
 			} while ( !IsClientDownloaded( clientVersion, clientChecksum ) );
 
 		}
