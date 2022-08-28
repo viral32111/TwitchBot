@@ -126,8 +126,13 @@ namespace TwitchBot {
 		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {
 			Log.Info( "Ready as user '{0}' ({1}).", e.User.Name, e.User.Identifier );
 
-			Log.Info( "Joining channel '{0}'...", Config.TwitchChatPrimaryChannelName );
-			await twitchClient.JoinChannel( Config.TwitchChatPrimaryChannelName );
+			if ( !string.IsNullOrEmpty( Config.TwitchChatPrimaryChannelName ) ) {
+				Log.Info( "Joining channel '{0}'...", Config.TwitchChatPrimaryChannelName );
+				await twitchClient.JoinChannel( Config.TwitchChatPrimaryChannelName );
+			} else {
+				Log.Warn( "No primary channel configured to join." );
+			}
+
 		}
 
 		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
