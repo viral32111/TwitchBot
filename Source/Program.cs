@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
 	public class Program {
@@ -32,31 +33,36 @@ namespace TwitchBot {
 				Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			}
 
-			Environment.Exit( 1 );
-			return;
-
+			// The path to the user access token file
+			string tokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
 
 			// Attempt to load an existing user access token from disk
 			try {
-				userAccessToken = await UserAccessToken.Load();
+				Log.Info( "Loading user access token from: '{0}'...", tokenFilePath );
+				userAccessToken = UserAccessToken.Load( tokenFilePath );
 
 				// If the token is no longer valid, then refresh & save it
-				if ( !await userAccessToken.IsValid() ) {
-					Log.Info( "The user access token is no longer valid. Refreshing it..." );
-					await userAccessToken.Refresh();
+				if ( !await userAccessToken.Validate() ) {
+					
+					Log.Info( "The user access token is no longer valid, refreshing it..." );
+					await userAccessToken.DoRefresh();
 
-					Log.Info( "Saving the updated user access token..." );
-					await userAccessToken.Save();
+					Log.Info( "Saving the refreshed user access token..." );
+					userAccessToken.Save( tokenFilePath );
+
 				}
 
-			// If loading an existing token fails, then request & save a fresh one
-			} catch ( Exception exception ) {
-				Log.Info( "Failed to load the user access token: '{0}'. Requesting a new one...", exception.Message );
-				userAccessToken = await UserAccessToken.Request( new string[] { "chat:read", "chat:edit" } );
-
-				Log.Info( "Saving the new user access token..." );
-				await userAccessToken.Save();
+			} catch ( FileNotFoundException ) {
+				Log.Info( "User access token file does not exist, requesting fresh token..." );
+				userAccessToken = await UserAccessToken.RequestAuthorization( Config.TwitchOAuthRedirectURL, Config.TwitchOAuthScopes );
+				userAccessToken.Save( tokenFilePath );
 			}
+
+
+
+			Environment.Exit( 1 );
+			return;
+
 
 			// Register event handlers for the Twitch client
 			twitchClient.OnError += OnError;
@@ -104,7 +110,7 @@ namespace TwitchBot {
 			} );
 
 			Log.Info( "Authenticating..." );
-			await twitchClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.AccessToken );
+			await twitchClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.Access );
 		}
 
 		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {

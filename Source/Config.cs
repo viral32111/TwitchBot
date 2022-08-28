@@ -48,7 +48,7 @@ namespace TwitchBot {
 				Log.Info( "Loaded configuration from file: '{0}'.", configFilePath );
 
 			// Otherwise, create it with default values in the above file
-			} catch {
+			} catch ( FileNotFoundException ) {
 				storage = Storage.CreateFile( configFilePath, new() {
 					[ "directory" ] = new JsonObject() {
 						[ "data" ] = Shared.IsWindows() ? "%LOCALAPPDATA%\\TwitchBot" : "/var/lib/twitch-bot",
@@ -61,9 +61,9 @@ namespace TwitchBot {
 							[ "secret" ] = "",
 							[ "redirect" ] = "",
 							[ "scopes" ] = new JsonArray( new JsonNode[] {
-							JsonValue.Create( "chat:read" )!,
-							JsonValue.Create( "chat:edit" )!
-						} ),
+								JsonValue.Create( "chat:read" )!,
+								JsonValue.Create( "chat:edit" )!
+							} ),
 						},
 						[ "chat" ] = new JsonObject() {
 							[ "url" ] = "irc-ws.chat.twitch.tv",

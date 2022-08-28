@@ -42,5 +42,9 @@ namespace TwitchBot {
 
 		}
 
+		public static bool IsDocker() {
+			return RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) && File.Exists( "/.dockerenv" );
+		}
+
 	}
 }
