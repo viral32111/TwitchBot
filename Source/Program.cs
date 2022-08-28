@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
@@ -12,10 +14,16 @@ namespace TwitchBot {
 		private static EventHandler? consoleCtrlHandler;
 
 		private static readonly Twitch.Client twitchClient = new();
-		private static UserAccessToken? userAccessToken = null;
 
 		// The main entry-point of the program
 		public static async Task Main() {
+
+			// Ensure the OAuth identifier & secret exists
+			if ( string.IsNullOrEmpty( Config.TwitchOAuthIdentifier ) || string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) {
+				Console.WriteLine( "Could not load Twitch application Client ID and/or secret from the configuration file!" );
+				Environment.Exit( 1 );
+				return;
+			}
 
 			// Display directory paths for convenience
 			Log.Info( "Data directory is: '{0}'.", Config.DataDirectory );
@@ -39,26 +47,33 @@ namespace TwitchBot {
 			// Attempt to load an existing user access token from disk
 			try {
 				Log.Info( "Loading user access token from: '{0}'...", tokenFilePath );
-				userAccessToken = UserAccessToken.Load( tokenFilePath );
+				Shared.UserAccessToken = UserAccessToken.Load( tokenFilePath );
 
 				// If the token is no longer valid, then refresh & save it
-				if ( !await userAccessToken.Validate() ) {
-					
+				if ( !await Shared.UserAccessToken.Validate() ) {
+
 					Log.Info( "The user access token is no longer valid, refreshing it..." );
-					await userAccessToken.DoRefresh();
+					await Shared.UserAccessToken.DoRefresh();
 
 					Log.Info( "Saving the refreshed user access token..." );
-					userAccessToken.Save( tokenFilePath );
+					Shared.UserAccessToken.Save( tokenFilePath );
 
+				} else {
+					Log.Info( "The user access token is still valid, no refresh required." );
 				}
 
 			} catch ( FileNotFoundException ) {
 				Log.Info( "User access token file does not exist, requesting fresh token..." );
-				userAccessToken = await UserAccessToken.RequestAuthorization( Config.TwitchOAuthRedirectURL, Config.TwitchOAuthScopes );
-				userAccessToken.Save( tokenFilePath );
+				Shared.UserAccessToken = await UserAccessToken.RequestAuthorization( Config.TwitchOAuthRedirectURL, Config.TwitchOAuthScopes );
+				Shared.UserAccessToken.Save( tokenFilePath );
 			}
 
-
+			// Fetch this account's name
+			JsonObject userResponse = await API.Request( "users" );
+			string? accountName = userResponse[ "data" ]?[ 0 ]?[ "display_name" ]?.ToString();
+			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "Failed to fetch account name." );
+			Shared.MyAccountName = accountName;
+			Log.Info( "My account name is: '{0}' ({1}, {2}).", Shared.MyAccountName, userResponse[ "data" ]?[ 0 ]?[ "id" ]?.ToString(), userResponse[ "data" ]?[ 0 ]?[ "created_at" ]?.ToString() );
 
 			Environment.Exit( 1 );
 			return;
@@ -100,7 +115,7 @@ namespace TwitchBot {
 		}
 
 		private static async Task OnConnect( object sender, EventArgs e ) {
-			if ( userAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
+			if ( Shared.UserAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
 			Log.Info( "Requesting capabilities..." );
 			await twitchClient.RequestCapabilities( new string[] {
@@ -110,7 +125,7 @@ namespace TwitchBot {
 			} );
 
 			Log.Info( "Authenticating..." );
-			await twitchClient.Authenticate( Shared.UserSecrets.AccountName, userAccessToken.Access );
+			await twitchClient.Authenticate( Shared.MyAccountName!, Shared.UserAccessToken.Access );
 		}
 
 		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {
@@ -144,8 +159,8 @@ namespace TwitchBot {
 				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );
 			} else if ( e.Message.Content == "!whoami" ) {
 				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
-			
-			// TODO: Implement this feature from the Python PoC
+
+				// TODO: Implement this feature from the Python PoC
 			} else if ( e.Message.Content == "!streak" ) {
 				await e.Message.Channel.Send( twitchClient, $"RawrelTV has been streaming every day for the last 0 day(s)! This streak started 00/00/0000 00:00." );
 			}

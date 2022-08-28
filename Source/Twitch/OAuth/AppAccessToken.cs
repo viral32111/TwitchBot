@@ -57,9 +57,9 @@ namespace TwitchBot.Twitch.OAuth {
 			throw new NotImplementedException();
 		}
 
-		public string GetAuthorizationHeader() {
+		public AuthenticationHeaderValue GetAuthorizationHeader() {
 			if ( Type == TokenType.Bearer ) {
-				return $"Bearer {Access}";
+				return new( "Bearer", Access );
 			} else {
 				throw new Exception( $"Unknown token type: '{Type}'" );
 			}

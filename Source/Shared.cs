@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
 	public static class Shared {
@@ -11,6 +12,9 @@ namespace TwitchBot {
 
 		public static readonly HttpClient httpClient = new();
 		[Obsolete( "Use Config.DataDirectory instead" )] public static string ApplicationDataDirectory = string.Empty;
+
+		public static string? MyAccountName;
+		public static UserAccessToken? UserAccessToken;
 
 		public static string GenerateRandomString( int length ) {
 			StringBuilder builder = new( length );

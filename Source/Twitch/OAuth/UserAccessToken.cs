@@ -34,13 +34,40 @@ namespace TwitchBot.Twitch.OAuth {
 
 			Storage storage = Storage.ReadFile( filePath );
 
-			TokenType tokenType = ( TokenType ) storage.Get<int>( "type" );
+			bool isOldFile = false;
+
+			TokenType tokenType;
+			try {
+				 tokenType = ( TokenType ) storage.Get<int>( "type" );
+			} catch { // Backwards compatibility as old file had type as string not integer
+				string oldTokenType = storage.Get<string>( "type" );
+				
+				if ( oldTokenType == "bearer" ) {
+					tokenType = TokenType.Bearer;
+				} else {
+					throw new Exception( $"Unknown user access token type: '{oldTokenType}'" );
+				}
+
+				isOldFile = true;
+			}
+
 			string accessToken = storage.Get<string>( "access" );
 			string refreshToken = storage.Get<string>( "refresh" );
 			DateTimeOffset expiresAt = DateTimeOffset.FromUnixTimeSeconds( storage.Get<long>( "expires" ) );
-			string[] scopes = storage.Get<string[]>( "scopes" );
+			
+			string[] scopes;
+			try {
+				scopes = storage.Get<string[]>( "scopes" );
+			} catch { // Backwards compatibility as old file never contained scopes
+				scopes = Config.TwitchOAuthScopes;
+				isOldFile = true;
+			}
 
-			return new UserAccessToken( tokenType, accessToken, expiresAt, refreshToken, scopes );
+			UserAccessToken userAccessToken = new( tokenType, accessToken, expiresAt, refreshToken, scopes );
+	
+			if ( isOldFile ) userAccessToken.Save( filePath ); // Update file if it triggered backwards compatibility loading
+
+			return userAccessToken;
 
 		}
 

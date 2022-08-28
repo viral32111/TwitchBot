@@ -15,7 +15,7 @@ namespace TwitchBot {
 		private readonly JsonObject rootStructure;
 
 		// The options for seralizing & deseralizing JSON objects
-		private static readonly JsonSerializerOptions serializerOptions = new() {
+		public static readonly JsonSerializerOptions serializerOptions = new() {
 			PropertyNamingPolicy = null, // Keep property names as they are
 			PropertyNameCaseInsensitive = false,
 			ReadCommentHandling = JsonCommentHandling.Skip, // Ignore any human comments
@@ -78,7 +78,7 @@ namespace TwitchBot {
 		public T Get<T>( string path ) {
 
 			// Retrieve the property value at the provided path
-			JsonValue? propertyValue = GetProperty( path );
+			JsonNode? propertyValue = GetProperty( path );
 
 			// Error if the value does not exist
 			if ( propertyValue == null ) throw new Exception( $"Could not find property '{path}' in structure" );
@@ -89,11 +89,11 @@ namespace TwitchBot {
 
 			// Return the type as a integer
 			} else if ( typeof( T ) == typeof( int ) ) {
-				return ( T ) ( object ) ( int ) propertyValue;
+				return ( T ) ( object ) ( int ) propertyValue.AsValue();
 
 			// Return the type as a long
 			} else if ( typeof( T ) == typeof( long ) ) {
-				return ( T ) ( object ) ( long ) propertyValue;
+				return ( T ) ( object ) ( long ) propertyValue.AsValue();
 
 			// Return the value as a string array
 			} else if ( typeof( T ) == typeof( string[] ) ) {
@@ -108,7 +108,7 @@ namespace TwitchBot {
 		}
 
 		// Retrieves a nested property from the configuration
-		public JsonValue? GetProperty( string path ) {
+		public JsonNode? GetProperty( string path ) {
 
 			// Split the nested path up into individual property names
 			List<string> propertyNames = path.Split( '.' ).ToList();
@@ -132,7 +132,7 @@ namespace TwitchBot {
 
 				// Return this property as a value if this is the last iteration
 				if ( propertyNames.Count == 1 ) {
-					return propertyValue.AsValue();
+					return propertyValue;
 
 					// Otherwise, store this property as a JSON object for the next iteration
 				} else {

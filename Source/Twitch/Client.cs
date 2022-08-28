@@ -294,16 +294,16 @@ namespace TwitchBot.Twitch {
 			} else {
 
 				// Command
-				if ( message.IsFor( Shared.UserSecrets.AccountName, ExpectedHost ) == true ) {
+				if ( message.IsFor( Shared.MyAccountName!, ExpectedHost ) == true ) {
 					if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
 						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
-						User user = State.GetOrCreateUser( channel, Shared.UserSecrets.AccountName );
+						User user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
 						OnChannelJoin?.Invoke( this, new OnChannelJoinLeaveEventArgs( user, true ) );
 
 					} else if ( message.Command == InternetRelayChat.Command.Names && message.Parameters != null ) {
 						List<string> userNames = new( message.Parameters[ ( message.Parameters.IndexOf( ':' ) + 1 ).. ].Split( ' ' ) );
-						userNames.Remove( Shared.UserSecrets.AccountName );
-						userNames.Remove( Shared.UserSecrets.AccountName.ToLower() );
+						userNames.Remove( Shared.MyAccountName! );
+						userNames.Remove( Shared.MyAccountName!.ToLower() );
 
 						if ( userNames.Count == 0 ) {
 							Log.Info( "No users are in the channel with us." );
