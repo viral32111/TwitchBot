@@ -2,8 +2,6 @@
 
 This is my Twitch integration and chat bot, primarily made for [Rawreltv](https://www.twitch.tv/rawreltv).
 
-Currently it is only able to manage user access tokens, connect to Twitch chat, request capabilities, and authenticate as the bot user. I am slowly working on implementing each part of the underlying protocol before working on any major features.
-
 ## Running
 
 The recommended way to run this bot is by using the [Docker image](https://github.com/users/viral32111/packages/container/package/twitchbot). This image is automatically updated every time a commit is pushed.
@@ -15,7 +13,7 @@ docker run \
 	--name twitch-bot \
 	--mount type=volume,source=twitch-bot,target=/var/lib/twitchbot \
 	--mount type=bind,source=$PWD/config.json,target=/etc/twitchbot.json,readonly \
-	ghcr.viral32111/twitchbot:latest
+	ghcr.io/viral32111/twitchbot:latest
 ```
 
 ### Configuration
