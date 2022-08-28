@@ -6,25 +6,51 @@ Currently it is only able to manage user access tokens, connect to Twitch chat, 
 
 ## Running
 
-This project uses [.NET user secrets](https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets) to store sensitive configuration values.
+The recommended way to run this bot is by using the [Docker image](https://github.com/users/viral32111/packages/container/package/twitchbot). This image is automatically updated every time a commit is pushed.
 
-Secrets can be set using the `dotnet user-secrets set` command. The following secrets are required:
- * `AppClientIdentifier` should be your Twitch application's client ID.
+For example, this command will run the bot in a Docker container using a custom configuration file in the current directory:
+
+```
+docker run \
+	--name twitch-bot \
+	--mount type=volume,source=twitch-bot,target=/var/lib/twitchbot \
+	--mount type=bind,source=$PWD/config.json,target=/etc/twitchbot.json,readonly \
+	ghcr.viral32111/twitchbot:latest
+```
+
+### Configuration
+
+The configuration file is where you should specify Twitch application credentials, channel names, etc.
+
+The default configuration file will be created at the default path, or at the path given as the first command-line argument to the program.
+
+The default path for the configuration file for each operating system is:
+ * Windows: `%CD%/TwitchBot.json`
+ * Linux: `/etc/twitchbot.json`
+
+### Persistent Data
+
+The bot will create data over time that must be retained across reboots.
+
+The location of this directory can be changed in the configuration file. The default for each operating system is:
+ * Windows: `%LOCALAPPDATA%/TwitchBot`
+ * Linux: `/var/lib/twitchbot`
+ 
+### Cached Data
+
+The bot will create temporary data over time that is reused across reboots, but can safely be destroyed when closed.
+
+The location of this directory can be changed in the configuration file. The default for each operating system is:
+ * Windows: `%TEMP%/TwitchBot`
+ * Linux: `/var/cache/twitchbot`
+
+### Development
+
+When running during development, it is preferred to keep secrets in the [.NET user secrets store](https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets).
+
+These secrets can be set using the `dotnet user-secrets set` command. The following secrets are required:
  * `AppClientSecret` should be your Twitch application's client secret.
- * `AccountName` should be your Twitch Bot's account name.
 
-**NOTE: There is currently no system in place for providing secrets when running the project in a production environment.**
-
-## Modules
-
-* Front-end
-  * Dashboard
-
-* Back-end
-  * OAuth Token Granter
-  * IRC Chatbot
-  * Event Listener (EventSub)
-  
 ## License
 
 Copyright (C) 2022 [viral32111](https://viral32111.com).
