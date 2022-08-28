@@ -17,8 +17,8 @@ using TwitchBot.Files;
 namespace TwitchBot.Twitch.OAuth {
 	public class UserAccessToken : AppAccessToken {
 
-		public readonly string Refresh;
-		public readonly string[] Scopes;
+		public string Refresh;
+		public string[] Scopes;
 
 		public UserAccessToken( TokenType type, string access, double expiresIn, string refresh, string[] scopes ) : base( type, access, expiresIn ) {
 			Refresh = refresh;
@@ -154,7 +154,46 @@ namespace TwitchBot.Twitch.OAuth {
 		}
 
 		public async Task DoRefresh() {
-			throw new NotImplementedException();
+
+			HttpResponseMessage refreshResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+				{ "client_id", Config.TwitchOAuthIdentifier },
+				{ "client_secret", Config.TwitchOAuthSecret },
+				{ "grant_type", "refresh_token" },
+				{ "refresh_token", Refresh },
+			} ) );
+
+			Stream responseStream = await refreshResponse.Content.ReadAsStreamAsync();
+			JsonDocument refreshDocument = await JsonDocument.ParseAsync( responseStream );
+
+			string? tokenType = refreshDocument.RootElement.GetProperty( "token_type" ).GetString();
+			string? accessToken = refreshDocument.RootElement.GetProperty( "access_token" ).GetString();
+			string? refreshToken = refreshDocument.RootElement.GetProperty( "refresh_token" ).GetString();
+			int expiresIn = refreshDocument.RootElement.GetProperty( "expires_in" ).GetInt32(); // Seconds
+
+			List<string> scopes = new();
+			foreach ( JsonElement element in refreshDocument.RootElement.GetProperty( "scope" ).EnumerateArray() ) {
+				string? value = element.GetString();
+				if ( value == null ) continue;
+				scopes.Add( value );
+			}
+
+			if ( string.IsNullOrEmpty( tokenType ) ) throw new Exception( "No token type found in refresh response" );
+			if ( string.IsNullOrEmpty( accessToken ) ) throw new Exception( "No access token found in refresh response" );
+			if ( string.IsNullOrEmpty( refreshToken ) ) throw new Exception( "No refresh token found in refresh response" );
+			if ( expiresIn <= 0 ) throw new Exception( "Invalid expiry time found in refresh response" );
+			if ( scopes.Count == 0 ) throw new Exception( "No scopes found in refresh response" );
+
+			if ( tokenType.ToLower() == "bearer" ) {
+				Type = TokenType.Bearer;
+			} else {
+				throw new Exception( $"Unknown user access token type: '{tokenType}'" );
+			}
+
+			Access = accessToken;
+			Refresh = refreshToken;
+			ExpiresAt = DateTimeOffset.UtcNow.AddSeconds( expiresIn );
+			Scopes = scopes.ToArray();
+
 		}
 
 		public void Save( string filePath ) {

@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Net.Http.Headers;
+using System.Net.Http;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace TwitchBot.Twitch.OAuth {
@@ -21,9 +24,9 @@ namespace TwitchBot.Twitch.OAuth {
 
 	// Client credentials grant flow
 	public class AppAccessToken {
-		public readonly TokenType Type;
-		public readonly string Access;
-		public readonly DateTimeOffset ExpiresAt;
+		public TokenType Type;
+		public string Access;
+		public DateTimeOffset ExpiresAt;
 
 		public AppAccessToken( TokenType type, string access, double expiresIn ) {
 			Type = type;
@@ -38,7 +41,16 @@ namespace TwitchBot.Twitch.OAuth {
 		}
 
 		public async Task<bool> Validate() {
-			throw new NotImplementedException();
+
+			Shared.httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "OAuth", Access );
+			HttpResponseMessage validateResponse = await Shared.httpClient.GetAsync( $"https://{Config.TwitchOAuthBaseURL}/validate" );
+
+			//Stream responseStream = await validateResponse.Content.ReadAsStreamAsync();
+			//JsonDocument responseDocument = await JsonDocument.ParseAsync( responseStream );
+
+			// TODO: Properly validate the response body
+			return validateResponse.StatusCode == HttpStatusCode.OK;
+
 		}
 
 		public async Task Revoke() {
@@ -46,7 +58,11 @@ namespace TwitchBot.Twitch.OAuth {
 		}
 
 		public string GetAuthorizationHeader() {
-			return $"{Type} {Access}";
+			if ( Type == TokenType.Bearer ) {
+				return $"Bearer {Access}";
+			} else {
+				throw new Exception( $"Unknown token type: '{Type}'" );
+			}
 		}
 	}
 }
