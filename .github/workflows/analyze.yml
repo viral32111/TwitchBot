@@ -3,9 +3,6 @@ name: Analyze
 on:
   push:
     branches: [ main ]
-    paths:
-    - '**.cs'
-    - '**.csproj'
   pull_request:
     branches: [ main ]
   schedule:
