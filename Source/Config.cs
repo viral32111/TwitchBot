@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Nodes;
 
 namespace TwitchBot {
@@ -30,8 +31,8 @@ namespace TwitchBot {
 		// Loads the configuration when the program is started
 		static Config() {
 
-			// Get the command-line arguments
-			string[] arguments = Environment.GetCommandLineArgs();
+			// Get the command-line arguments (excluding flags)
+			string[] arguments = Environment.GetCommandLineArgs().ToList().FindAll( value => !value.StartsWith( "--" ) ).ToArray();
 
 			// Use the first argument as the configuration file path, or default to a file in the current working directory
 			string configFilePath = arguments.Length >= 2 ? arguments[ 1 ] : Path.Combine( Directory.GetCurrentDirectory(), "twitch-bot.json" );

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -15,14 +16,7 @@ namespace TwitchBot {
 		private static readonly Twitch.Client twitchClient = new();
 
 		// The main entry-point of the program
-		public static async Task Main() {
-
-			// Ensure the OAuth identifier & secret exists
-			if ( string.IsNullOrEmpty( Config.TwitchOAuthIdentifier ) || string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) {
-				Console.WriteLine( "Could not load Twitch application Client ID and/or secret from the configuration file!" );
-				Environment.Exit( 1 );
-				return;
-			}
+		public static async Task Main( string[] arguments ) {
 
 			// Display directory paths for convenience
 			Log.Info( "Data directory is: '{0}'.", Config.DataDirectory );
@@ -30,6 +24,20 @@ namespace TwitchBot {
 
 			// Create required directories
 			Shared.CreateDirectories();
+
+			// Exit now if this launch was only to initialize files
+			if ( arguments.Contains( "--init" ) ) {
+				Log.Info( "Initialized configuration & directories, exiting..." );
+				Environment.Exit( 0 );
+				return;
+			}
+
+			// Ensure the OAuth identifier & secret exists
+			if ( string.IsNullOrEmpty( Config.TwitchOAuthIdentifier ) || string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) {
+				Console.WriteLine( "Could not load Twitch application Client ID and/or secret from the configuration file!" );
+				Environment.Exit( 1 );
+				return;
+			}
 
 			// Download the Cloudflare Tunnel client
 			if ( !Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) ) {
