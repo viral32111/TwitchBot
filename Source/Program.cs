@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using TwitchBot.Features;
 using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
@@ -154,7 +155,7 @@ namespace TwitchBot {
 			Log.Info( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 
 			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
-
+			
 		}
 
 		private static async Task OnChannelLeave( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
@@ -179,9 +180,24 @@ namespace TwitchBot {
 			} else if ( e.Message.Content == "!whoami" ) {
 				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
 
-			// TODO: Implement this feature from the Python PoC
-			/*} else if ( e.Message.Content == "!streak" ) {
-				await e.Message.Channel.Send( twitchClient, $"RawrelTV has been streaming every day for the last 0 day(s)! This streak started 00/00/0000 00:00." );*/
+			// Streaming streak
+			} else if ( e.Message.Content == "!streak" ) {
+				int channelId = e.Message.Channel.Identifier.GetValueOrDefault( 127154290 ); // Rawreltv, cus .Channel.Identifier is probably broken tbh
+				string channelName = e.Message.Channel.Name.Substring( 0, 1 ).ToUpper() + e.Message.Channel.Name.Substring( 1 ); // hardcoded title case
+				Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", channelName, channelId );
+				try {
+					Streak? streak = await Streak.GetLatestStreak( channelId );
+					if ( streak != null ) {
+						Console.WriteLine( "Duration (Days): {0}, Streams: {1}, Total Hours: {2}, Started: {3}", streak.Duration, streak.StreamCount, streak.StreamDuration / 60 / 60, streak.StartedAt );
+						await e.Message.Channel.Send( twitchClient, $"{channelName} has been streaming every day for the last {streak.Duration} day(s), with a total of {streak.StreamDuration / 60 / 60} hour(s) across {streak.StreamCount} stream(s)!" );
+					} else {
+						Console.WriteLine( "There is no streak yet :c" );
+						await e.Message.Channel.Send( twitchClient, $"{channelName} has no streaming streak yet." );
+					}
+				} catch ( Exception ex ) {
+					Console.WriteLine( ex.Message );
+					await e.Message.Channel.Send( twitchClient, $"Sorry, something went wrong!" );
+				}
 			}
 
 		}

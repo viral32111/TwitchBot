@@ -28,6 +28,18 @@ namespace TwitchBot {
 			return strings.ToArray();
 		}
 
+		public static T[] ToArrayOf<T>( this JsonArray array ) {
+			List<T> values = new();
+
+			foreach ( JsonNode? node in array ) {
+				if ( node == null ) continue;
+				//if ( node.GetType() != typeof( T ) ) continue;
+				values.Add( node.GetValue<T>() );
+			}
+
+			return values.ToArray();
+		}
+
 		public static async Task Respond( this HttpListenerResponse response, HttpStatusCode statusCode = HttpStatusCode.OK, string? textMessage = null ) {
 
 			response.StatusCode = ( int ) statusCode;

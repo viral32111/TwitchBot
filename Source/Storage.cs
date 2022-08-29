@@ -83,8 +83,19 @@ namespace TwitchBot {
 			// Error if the value does not exist
 			if ( propertyValue == null ) throw new Exception( $"Could not find property '{path}' in structure" );
 
+			if ( typeof( T ) == typeof( string[] ) ) {
+				return ( T ) ( object ) propertyValue.AsArray().ToArray();
+			} else if ( typeof( T ).IsArray ) {
+				Console.WriteLine( $"{path} | {typeof( T )} | {typeof( T ).IsArray}" );
+				return ( T ) ( object ) propertyValue.AsArray().ToArrayOf<T>();
+			} else if ( typeof( T ) == typeof( JsonObject ) ) {
+				return ( T ) ( object ) propertyValue.AsObject();
+			} else {
+				return propertyValue.AsValue().GetValue<T>();
+			}
+
 			// Return the value as a string
-			if ( typeof( T ) == typeof( string ) ) {
+			/*if ( typeof( T ) == typeof( string ) ) {
 				return ( T ) ( object ) propertyValue.ToString();
 
 				// Return the type as a integer
@@ -95,19 +106,24 @@ namespace TwitchBot {
 			} else if ( typeof( T ) == typeof( long ) ) {
 				return ( T ) ( object ) ( long ) propertyValue.AsValue();
 
-				// Return the value as a string array
-			} else if ( typeof( T ) == typeof( string[] ) ) {
-				return ( T ) ( object ) propertyValue.AsArray().ToArray();
+				// Return the type as a JSON object
+			} else if ( typeof( T ) == typeof( JsonObject ) ) {
+				return ( T ) ( object ) propertyValue.AsObject();
+
+				// Return the value as an array
+			} else if ( typeof( T ).IsArray ) {
+				Console.WriteLine( "blyat" );
+				return ( T ) ( object ) propertyValue.AsArray().ToArray<T>();
 
 				// Error if the type is unhandled
 				// TODO: Fallback to cast here as some types only need that
 			} else {
 				throw new Exception( "Unhandled property data type" );
-			}
+			}*/
 
 		}
 
-		// Retrieves a nested property from the configuration
+		// Retrieves a nested property
 		public JsonNode? GetProperty( string path ) {
 
 			// Split the nested path up into individual property names
@@ -147,6 +163,16 @@ namespace TwitchBot {
 			// Return nothing if no value was returned
 			return null;
 
+		}
+
+		// Sets a non-nested property to the provided value
+		public void SetProperty( string name, JsonNode? value ) {
+			rootStructure[ name ] = value;
+		}
+
+		// Checks if a nested property exists
+		public bool HasProperty( string path ) {
+			return GetProperty( path ) != null;
 		}
 
 	}

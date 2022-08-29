@@ -85,31 +85,39 @@ namespace TwitchBot {
 				Log.Info( "Created default configuration in file: '{0}'.", configFilePath );
 			}
 
-			// Populate directory configuration
-			// NOTE: Environment variables such as %APPDATA% on Windows are parsed here
-			DataDirectory = Environment.ExpandEnvironmentVariables( storage.Get<string>( "directory.data" ) );
-			CacheDirectory = Environment.ExpandEnvironmentVariables( storage.Get<string>( "directory.cache" ) );
+			try {
 
-			// Populate Twitch OAuth configuration, except from the client secret
-			TwitchOAuthBaseURL = storage.Get<string>( "twitch.oauth.url" );
-			TwitchOAuthIdentifier = storage.Get<string>( "twitch.oauth.identifier" );
-			TwitchOAuthRedirectURL = storage.Get<string>( "twitch.oauth.redirect" );
-			TwitchOAuthScopes = storage.Get<string[]>( "twitch.oauth.scopes" );
+				// Populate directory configuration
+				// NOTE: Environment variables such as %APPDATA% on Windows are parsed here
+				DataDirectory = Environment.ExpandEnvironmentVariables( storage.Get<string>( "directory.data" ) );
+				CacheDirectory = Environment.ExpandEnvironmentVariables( storage.Get<string>( "directory.cache" ) );
 
-			// Populate Twitch Chat IRC configuration
-			TwitchChatBaseURL = storage.Get<string>( "twitch.chat.url" );
-			TwitchChatPrimaryChannelName = storage.Get<string>( "twitch.chat.channel" );
+				// Populate Twitch OAuth configuration, except from the client secret
+				TwitchOAuthBaseURL = storage.Get<string>( "twitch.oauth.url" );
+				TwitchOAuthIdentifier = storage.Get<string>( "twitch.oauth.identifier" );
+				TwitchOAuthRedirectURL = storage.Get<string>( "twitch.oauth.redirect" );
+				TwitchOAuthScopes = storage.Get<string[]>( "twitch.oauth.scopes" );
 
-			// Populate Twitch API configuration
-			TwitchAPIBaseURL = storage.Get<string>( "twitch.api.url" );
+				// Populate Twitch Chat IRC configuration
+				TwitchChatBaseURL = storage.Get<string>( "twitch.chat.url" );
+				TwitchChatPrimaryChannelName = storage.Get<string>( "twitch.chat.channel" );
 
-			// Populate Cloudflare Tunnel client configuration
-			CloudflareTunnelVersion = storage.Get<string>( "cloudflare.tunnel.version" );
-			CloudflareTunnelChecksum = storage.Get<string>( "cloudflare.tunnel.checksum" );
+				// Populate Twitch API configuration
+				TwitchAPIBaseURL = storage.Get<string>( "twitch.api.url" );
 
-			// Fallback to the user secrets store if the OAuth secret is not in the configuration file
-			string? twitchOAuthSecret = storage.GetProperty( "twitch.oauth.secret" )?.AsValue().ToString();
-			TwitchOAuthSecret = !string.IsNullOrEmpty( twitchOAuthSecret ) ? twitchOAuthSecret : UserSecrets.TwitchOAuthSecret;
+				// Populate Cloudflare Tunnel client configuration
+				CloudflareTunnelVersion = storage.Get<string>( "cloudflare.tunnel.version" );
+				CloudflareTunnelChecksum = storage.Get<string>( "cloudflare.tunnel.checksum" );
+
+				// Fallback to the user secrets store if the OAuth secret is not in the configuration file
+				string? twitchOAuthSecret = storage.GetProperty( "twitch.oauth.secret" )?.AsValue().ToString();
+				TwitchOAuthSecret = !string.IsNullOrEmpty( twitchOAuthSecret ) ? twitchOAuthSecret : UserSecrets.TwitchOAuthSecret;
+
+			} catch ( Exception e ) {
+				Console.WriteLine( e.Message );
+				Environment.Exit( 1 );
+			}
+			
 
 		}
 
