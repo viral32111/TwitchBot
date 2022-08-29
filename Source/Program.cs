@@ -107,8 +107,8 @@ namespace TwitchBot {
 
 		private static bool OnApplicationExit( CtrlType signal ) {
 
-			Log.Info( "Stopping Cloudflare Tunnel client..." );
-			Cloudflare.StopTunnel();
+			//Log.Info( "Stopping Cloudflare Tunnel client..." );
+			//Cloudflare.StopTunnel();
 
 			Log.Info( "Disconnecting..." );
 			twitchClient.Disconnect().Wait();
@@ -174,14 +174,14 @@ namespace TwitchBot {
 				await e.Message.Channel.Send( twitchClient, $"Your random number is {random.Next( 100 )}" );
 			} else if ( e.Message.Content == "!cake" ) {
 				await e.Message.Channel.Send( twitchClient, $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
-			} else if ( e.Message.Content == "!socials" ) {
-				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );
+			/*} else if ( e.Message.Content == "!socials" ) {
+				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );*/
 			} else if ( e.Message.Content == "!whoami" ) {
 				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
 
-				// TODO: Implement this feature from the Python PoC
-			} else if ( e.Message.Content == "!streak" ) {
-				await e.Message.Channel.Send( twitchClient, $"RawrelTV has been streaming every day for the last 0 day(s)! This streak started 00/00/0000 00:00." );
+			// TODO: Implement this feature from the Python PoC
+			/*} else if ( e.Message.Content == "!streak" ) {
+				await e.Message.Channel.Send( twitchClient, $"RawrelTV has been streaming every day for the last 0 day(s)! This streak started 00/00/0000 00:00." );*/
 			}
 
 		}
@@ -215,8 +215,8 @@ namespace TwitchBot {
 
 			Log.Info( "An error has occurred: '{0}'.", e.Message );
 
-			Log.Info( "Stopping Cloudflare Tunnel client..." );
-			Cloudflare.StopTunnel(); // TODO: Kill tunnel on error?
+			//Log.Info( "Stopping Cloudflare Tunnel client..." );
+			//Cloudflare.StopTunnel(); // TODO: Kill tunnel on error?
 
 			Log.Info( "Disconnecting..." );
 			await twitchClient.Disconnect();
