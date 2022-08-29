@@ -37,5 +37,5 @@ WORKDIR ${DIRECTORY_DATA}
 VOLUME ${DIRECTORY_DATA}
 
 # Start the bot when launched
-ENTRYPOINT [ "dotnet", "/usr/local/twitchbot/TwitchBot.dll" ]
+ENTRYPOINT [ "dotnet", "/usr/local/twitch-bot/TwitchBot.dll" ]
 CMD [ "/etc/twitch-bot.json" ]
