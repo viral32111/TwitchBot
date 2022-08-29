@@ -94,6 +94,7 @@ jobs:
         push: ${{ github.event_name != 'pull_request' }}
         pull: true
         tags: ${{ steps.metadata.outputs.tags }}
+        labels: ${{ steps.metadata.outputs.labels }}
 
     - name: Create Draft Release
       id: release

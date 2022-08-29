@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:6.0
 ARG USER_ID=1000 \
 	USER_NAME=user \
 	USER_HOME=/home/user \
-	
+
 # Paths configuration
 ARG DIRECTORY_BIN=/usr/local/twitch-bot \
 	DIRECTORY_DATA=/var/lib/twitch-bot \
@@ -16,10 +16,10 @@ ARG DIRECTORY_BIN=/usr/local/twitch-bot \
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # Create directories & regular user
-RUN mkdir --verbose --parents ${DIRECTORY_BIN} ${DIRECTORY_DATA} && \
-	adduser --system --disabled-password --disabled-login --shell /usr/sbin/nologin --no-create-home --home ${USER_HOME} --gecos ${USER_NAME} --group --uid ${USER_ID} ${USER_NAME} && \
+RUN mkdir --verbose --parents ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} && \
 	touch ${FILE_CONFIG} && \
-	chown --changes --recursive ${USER_ID}:${USER_ID} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} ${FILE_CONFIG}
+	adduser --system --disabled-password --disabled-login --shell /usr/sbin/nologin --no-create-home --home ${USER_HOME} --gecos ${USER_NAME} --group --uid ${USER_ID} ${USER_NAME} && \
+	chown --changes --recursive ${USER_ID}:${USER_ID} ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} ${FILE_CONFIG}
 
 # Add build artifacts
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}/
