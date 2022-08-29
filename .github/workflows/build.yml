@@ -57,11 +57,11 @@ jobs:
       run: sudo dotnet run --configuration Release --no-build --init bin/Release/net6.0/twitch-bot.json
 
     - name: Archive Build
-      run: >
-        zip TwitchBot.zip
-          ./bin/Release/net6.0/TwitchBot.dll
-          ./bin/Release/net6.0/TwitchBot.deps.json
-          ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
+      run: |
+        zip TwitchBot.zip \
+          ./bin/Release/net6.0/TwitchBot.dll \
+          ./bin/Release/net6.0/TwitchBot.deps.json \
+          ./bin/Release/net6.0/TwitchBot.runtimeconfig.json \
           ./bin/Release/net6.0/twitch-bot.json
 
     - name: Upload Build
