@@ -17,21 +17,21 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # Create directories & regular user
 RUN mkdir --verbose --parents ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} && \
-	touch ${FILE_CONFIG} && \
 	adduser --system --disabled-password --disabled-login --shell /usr/sbin/nologin --no-create-home --home ${USER_HOME} --gecos ${USER_NAME} --group --uid ${USER_ID} ${USER_NAME} && \
-	chown --changes --recursive ${USER_ID}:${USER_ID} ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} ${FILE_CONFIG}
+	chown --changes --recursive ${USER_ID}:${USER_ID} ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE}
 
 # Add build artifacts
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.runtimeconfig.json ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.dll ${DIRECTORY_BIN}/
 
+# Initialize to create configuration file
+RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${FILE_CONFIG} && \
+	chown --changes --recursive ${USER_ID}:${USER_ID} ${FILE_CONFIG}
+
 # Change to regular user & data directory
 USER ${USER_ID}:${USER_ID}
 WORKDIR ${DIRECTORY_DATA}
-
-# Initialize to create configuration file
-RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${FILE_CONFIG}
 
 # Persist the data directory
 VOLUME ${DIRECTORY_DATA}
