@@ -25,13 +25,12 @@ RUN mkdir --verbose --parents ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.runtimeconfig.json ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.dll ${DIRECTORY_BIN}/
-COPY --chown=${USER_ID}:${USER_ID} ./twitch-bot.json ${FILE_CONFIG}
 
 # Change to regular user & data directory
 USER ${USER_ID}:${USER_ID}
 WORKDIR ${DIRECTORY_DATA}
 
-# Initialize to be safe
+# Initialize to create configuration file
 RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${FILE_CONFIG}
 
 # Persist the data directory

@@ -54,22 +54,14 @@ jobs:
     - name: Test Project
       run: dotnet test --configuration Release --no-build --verbosity normal
 
-    - name: Run Project
-      run: sudo dotnet run --configuration Release --no-build --init bin/Release/net6.0/twitch-bot.json
-
-    - name: Archive Build
-      run: |
-        zip TwitchBot.zip \
-          ./bin/Release/net6.0/TwitchBot.dll \
-          ./bin/Release/net6.0/TwitchBot.deps.json \
-          ./bin/Release/net6.0/TwitchBot.runtimeconfig.json \
-          ./bin/Release/net6.0/twitch-bot.json
-
     - name: Upload Build
       uses: actions/upload-artifact@v3
       with:
         name: TwitchBot
-        path: ./TwitchBot.zip
+        path: |
+          ./bin/Release/net6.0/TwitchBot.dll
+          ./bin/Release/net6.0/TwitchBot.deps.json
+          ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
 
     - name: Extract Metadata for Docker
       id: metadata
@@ -111,7 +103,16 @@ jobs:
           ${{ steps.metadata.outputs.tags }}
           ```
 
-    - name: Upload Artifacts to Release
+    - name: Create Assets for Release
+      if: ${{ github.ref.type == 'tag' && github.event_name != 'pull_request' }}
+      run: |
+        cd ./bin/Release/net6.0
+        zip ../../../TwitchBot.zip \
+          ./TwitchBot.dll \
+          ./TwitchBot.deps.json \
+          ./TwitchBot.runtimeconfig.json
+
+    - name: Upload Assets to Release
       if: ${{ github.ref.type == 'tag' && github.event_name != 'pull_request' }}
       uses: actions/upload-release-asset@v1
       env:
