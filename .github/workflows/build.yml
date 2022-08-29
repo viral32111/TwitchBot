@@ -15,6 +15,7 @@ on:
   pull_request:
     branches:
     - '**'
+  workflow_dispatch:
 
 env:
   REGISTRY_NAME: ghcr.io
