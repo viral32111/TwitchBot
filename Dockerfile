@@ -25,7 +25,7 @@ RUN mkdir --verbose --parents ${DIRECTORY_BIN} ${DIRECTORY_DATA} && \
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.runtimeconfig.json ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.dll ${DIRECTORY_BIN}/
-COPY --chown=${USER_ID}:${USER_ID} ./twitchbot.json ${FILE_CONFIG}
+COPY --chown=${USER_ID}:${USER_ID} ./twitch-bot.json ${FILE_CONFIG}
 
 # Change to regular user & data directory
 USER ${USER_ID}:${USER_ID}
