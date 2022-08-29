@@ -8,6 +8,7 @@ on:
     - '**.sln'
     - 'Dockerfile'
     - '.dockerignore'
+    - '.github/workflows/build.yml'
     branches:
     - '**'
     tags:
