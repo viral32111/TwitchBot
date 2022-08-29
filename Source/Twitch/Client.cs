@@ -329,6 +329,8 @@ namespace TwitchBot.Twitch {
 						User user = State.GetOrCreateUser( channel, message.User );
 						Message theMessage = new( channel, user, parameters[ 1 ].Trim() );
 
+						State.UpdateUser( channel, message.Tags );
+
 						OnChatMessage?.Invoke( this, new OnChatMessageEventArgs( theMessage ) );
 
 					} else if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
