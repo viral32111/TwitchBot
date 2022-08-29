@@ -8,6 +8,7 @@ using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
 	public class Program {
+
 		[DllImport( "Kernel32" )]
 		private static extern bool SetConsoleCtrlHandler( EventHandler handler, bool add );
 		private delegate bool EventHandler( CtrlType signal );
@@ -105,6 +106,7 @@ namespace TwitchBot {
 		}
 
 		private static bool OnApplicationExit( CtrlType signal ) {
+
 			Log.Info( "Stopping Cloudflare Tunnel client..." );
 			Cloudflare.StopTunnel();
 
@@ -115,9 +117,11 @@ namespace TwitchBot {
 			Environment.Exit( 0 );
 
 			return false;
+
 		}
 
 		private static async Task OnConnect( object sender, EventArgs e ) {
+
 			if ( Shared.UserAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
 			Log.Info( "Requesting capabilities..." );
@@ -128,10 +132,12 @@ namespace TwitchBot {
 			} );
 
 			Log.Info( "Authenticating..." );
+
 			await twitchClient.Authenticate( Shared.MyAccountName!, Shared.UserAccessToken.Access );
 		}
 
 		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {
+
 			Log.Info( "Ready as user '{0}' ({1}).", e.User.Name, e.User.Identifier );
 
 			if ( !string.IsNullOrEmpty( Config.TwitchChatPrimaryChannelName ) ) {
@@ -144,16 +150,21 @@ namespace TwitchBot {
 		}
 
 		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
+
 			Log.Info( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
 
 			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
+
 		}
 
 		private static async Task OnChannelLeave( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
+
 			Log.Info( "User '{0}' left channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
+
 		}
 
 		private static async Task OnChatMessage( object sender, Twitch.OnChatMessageEventArgs e ) {
+
 			Log.Info( "User '{0}' in '{1}' said '{2}'.", e.Message.User.Global.Name, e.Message.Channel.Name, e.Message.Content );
 
 			if ( e.Message.Content == "!hello" ) {
@@ -172,9 +183,11 @@ namespace TwitchBot {
 			} else if ( e.Message.Content == "!streak" ) {
 				await e.Message.Channel.Send( twitchClient, $"RawrelTV has been streaming every day for the last 0 day(s)! This streak started 00/00/0000 00:00." );
 			}
+
 		}
 
 		private static async Task OnUserUpdate( object sender, Twitch.OnUserUpdateEventArgs e ) {
+
 			Log.Info( "User '{0}' ({1}) updated.", e.User.Global.Name, e.User.Global.Identifier );
 			Log.Info( " Type: '{0}'", e.User.Global.Type );
 			Log.Info( " Color: '{0}'", e.User.Global.Color );
@@ -184,18 +197,22 @@ namespace TwitchBot {
 			Log.Info( " Channel: '{0}'", e.User.Channel.Name );
 			Log.Info( "  Is Moderator: '{0}'", e.User.IsModerator );
 			Log.Info( "  Is Subscriber: '{0}'", e.User.IsSubscriber );
+
 		}
 
 		private static async Task OnChannelUpdate( object sender, Twitch.OnChannelUpdateEventArgs e ) {
+
 			Log.Info( "Channel '{0}' ({1}) updated.", e.Channel.Name, e.Channel.Identifier );
 			Log.Info( " Is Emote Only: '{0}'", e.Channel.IsEmoteOnly );
 			Log.Info( " Is Followers Only: '{0}'", e.Channel.IsFollowersOnly );
 			Log.Info( " Is Subscribers Only: '{0}'", e.Channel.IsSubscribersOnly );
 			Log.Info( " Is R9K: '{0}'", e.Channel.IsR9K );
 			Log.Info( " Is Rituals: '{0}'", e.Channel.IsRituals );
+
 		}
 
 		private static async Task OnError( object sender, Twitch.OnErrorEventArgs e ) {
+
 			Log.Info( "An error has occurred: '{0}'.", e.Message );
 
 			Log.Info( "Stopping Cloudflare Tunnel client..." );
@@ -206,7 +223,9 @@ namespace TwitchBot {
 
 			Log.Info( "Exiting..." );
 			Environment.Exit( 1 );
+
 		}
+
 	}
 
 	public enum CtrlType {
@@ -216,4 +235,5 @@ namespace TwitchBot {
 		CTRL_LOGOFF_EVENT = 5,
 		CTRL_SHUTDOWN_EVENT = 6
 	}
+
 }
