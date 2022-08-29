@@ -54,7 +54,7 @@ jobs:
       run: dotnet test --configuration Release --no-build --verbosity normal
 
     - name: Run Project
-      run: dotnet run --configuration Release --no-build --init bin/Release/net6.0/twitchbot.json
+      run: sudo dotnet run --configuration Release --no-build --init bin/Release/net6.0/twitch-bot.json
 
     - name: Archive Build
       run: >
@@ -62,7 +62,7 @@ jobs:
           ./bin/Release/net6.0/TwitchBot.dll
           ./bin/Release/net6.0/TwitchBot.deps.json
           ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
-          ./bin/Release/net6.0/twitchbot.json
+          ./bin/Release/net6.0/twitch-bot.json
 
     - name: Upload Build
       uses: actions/upload-artifact@v3

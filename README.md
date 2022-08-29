@@ -11,8 +11,8 @@ For example, this command will run the bot in a Docker container using a custom 
 ```
 docker run \
 	--name twitch-bot \
-	--mount type=volume,source=twitch-bot,target=/var/lib/twitchbot \
-	--mount type=bind,source=$PWD/config.json,target=/etc/twitchbot.json,readonly \
+	--mount type=volume,source=twitch-bot,target=/var/lib/twitch-bot \
+	--mount type=bind,source=$PWD/config.json,target=/etc/twitch-bot.json \
 	ghcr.io/viral32111/twitchbot:latest
 ```
 
@@ -23,8 +23,8 @@ The configuration file is where you should specify Twitch application credential
 The default configuration file will be created at the default path, or at the path given as the first command-line argument to the program.
 
 The default path for the configuration file for each operating system is:
- * Windows: `%CD%/TwitchBot.json`
- * Linux: `/etc/twitchbot.json`
+ * Windows: `%CD%/twitch-bot.json`
+ * Linux: `$PWD/twitch-bot.json`
 
 ### Persistent Data
 
@@ -32,7 +32,7 @@ The bot will create data over time that must be retained across reboots.
 
 The location of this directory can be changed in the configuration file. The default for each operating system is:
  * Windows: `%LOCALAPPDATA%/TwitchBot`
- * Linux: `/var/lib/twitchbot`
+ * Linux: `/var/lib/twitch-bot`
  
 ### Cached Data
 
@@ -40,7 +40,7 @@ The bot will create temporary data over time that is reused across reboots, but 
 
 The location of this directory can be changed in the configuration file. The default for each operating system is:
  * Windows: `%TEMP%/TwitchBot`
- * Linux: `/var/cache/twitchbot`
+ * Linux: `/var/cache/twitch-bot`
 
 ### Development
 

@@ -7,10 +7,10 @@ ARG USER_ID=1000 \
 	USER_HOME=/home/user \
 	
 # Paths configuration
-ARG DIRECTORY_BIN=/usr/local/twitchbot \
-	DIRECTORY_DATA=/var/lib/twitchbot \
-	DIRECTORY_CACHE=/var/cache/twitchbot \
-	FILE_CONFIG=/etc/twitchbot.json
+ARG DIRECTORY_BIN=/usr/local/twitch-bot \
+	DIRECTORY_DATA=/var/lib/twitch-bot \
+	DIRECTORY_CACHE=/var/cache/twitch-bot \
+	FILE_CONFIG=/etc/twitch-bot.json
 
 # Disable .NET telemetry
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
@@ -22,9 +22,9 @@ RUN mkdir --verbose --parents ${DIRECTORY_BIN} ${DIRECTORY_DATA} && \
 	chown --changes --recursive ${USER_ID}:${USER_ID} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} ${FILE_CONFIG}
 
 # Add build artifacts
-COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}
-COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.runtimeconfig.json ${DIRECTORY_BIN}
-COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.dll ${DIRECTORY_BIN}
+COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}/
+COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.runtimeconfig.json ${DIRECTORY_BIN}/
+COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.dll ${DIRECTORY_BIN}/
 COPY --chown=${USER_ID}:${USER_ID} ./twitchbot.json ${FILE_CONFIG}
 
 # Change to regular user & data directory
