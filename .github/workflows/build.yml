@@ -2,15 +2,19 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
     paths:
     - 'Source/**'
     - '**.csproj'
     - '**.sln'
     - 'Dockerfile'
     - '.dockerignore'
+    branches:
+    - '**'
+    tags:
+    - '**'
   pull_request:
-    branches: [ main ]
+    branches:
+    - '**'
 
 env:
   REGISTRY_NAME: ghcr.io
@@ -49,11 +53,37 @@ jobs:
     - name: Test Project
       run: dotnet test --configuration Release --no-build --verbosity normal
 
+    - name: Run Project
+      run: dotnet run --configuration Release --no-build --init bin/Release/net6.0/twitchbot.json
+
+    - name: Archive Build
+      run: >
+        zip TwitchBot.zip
+          ./bin/Release/net6.0/TwitchBot.dll
+          ./bin/Release/net6.0/TwitchBot.deps.json
+          ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
+          ./bin/Release/net6.0/twitchbot.json
+
     - name: Upload Build
       uses: actions/upload-artifact@v3
       with:
         name: TwitchBot
-        path: bin/Release/net6.0/TwitchBot.dll
+        path: ./TwitchBot.zip
+
+    - name: Extract Metadata for Docker
+      id: metadata
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY_NAME }}/${{ github.actor }}/twitchbot
+        flavour: latest=false
+        tags: |
+          type=ref,event=pr
+          type=ref,event=branch
+          type=semver,pattern={{major}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}.{{minor}}.{{patch}}
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha,format=short,prefix=commit-
 
     - name: Build & Push Docker Image
       uses: docker/build-push-action@v3
@@ -61,4 +91,31 @@ jobs:
         file: ./Dockerfile
         context: ./bin/Release/net6.0/
         push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ env.REGISTRY_NAME }}/${{ github.actor }}/twitchbot:latest
+        pull: true
+        tags: ${{ steps.metadata.outputs.tags }}
+
+    - name: Create Draft Release
+      id: release
+      if: ${{ github.ref.type == 'tag' && github.event_name != 'pull_request' }}
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        draft: true
+        tag_name: ${{ github.ref.name }}
+        release_name: ${{ github.ref.name }}
+        body: |
+          ```
+          ${{ steps.metadata.outputs.tags }}
+          ```
+
+    - name: Upload Artifacts to Release
+      if: ${{ github.ref.type == 'tag' && github.event_name != 'pull_request' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.release.outputs.upload_url }}
+        asset_path: ./TwitchBot.zip
+        asset_name: TwitchBot.zip
+        asset_content_type: application/zip
