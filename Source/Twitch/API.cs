@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
@@ -25,7 +24,21 @@ namespace TwitchBot.Twitch {
 
 			HttpResponseMessage httpResponse = await Shared.httpClient.SendAsync( httpRequest );
 
-			if ( httpResponse.StatusCode != HttpStatusCode.OK ) throw new Exception( $"Unsuccessful HTTP response code {httpResponse.StatusCode} from API request: '{endpoint}'" );
+			if ( httpResponse.StatusCode != HttpStatusCode.OK ) {
+				Log.Warn( "API request: '{0}' '{1}' failed: '{2}'.", method, endpoint, httpResponse.StatusCode );
+
+				if ( httpResponse.StatusCode == HttpStatusCode.Unauthorized ) {
+					Log.Warn( "User access token has expired, refreshing & saving..." );
+					await Shared.UserAccessToken.DoRefresh();
+					Shared.UserAccessToken.Save( Shared.UserAccessTokenFilePath );
+
+					Log.Info( "Retrying API request: '{0}' '{1}'...", method, endpoint );
+					return await Request( endpoint, method, queryString );
+
+				} else {
+					throw new Exception( $"Unsuccessful HTTP response code '{httpResponse.StatusCode}' for API request: '{method}' '{endpoint}'" );
+				}
+			}
 
 			Stream responseStream = await httpResponse.Content.ReadAsStreamAsync();
 

@@ -13,6 +13,7 @@ namespace TwitchBot {
 
 		public static string? MyAccountName;
 		public static UserAccessToken? UserAccessToken;
+		public static readonly string UserAccessTokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
 
 		public static string GenerateRandomString( int length ) {
 			StringBuilder builder = new( length );

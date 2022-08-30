@@ -50,13 +50,10 @@ namespace TwitchBot {
 				Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			}
 
-			// The path to the user access token file
-			string tokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
-
 			// Attempt to load an existing user access token from disk
 			try {
-				Log.Info( "Loading user access token from: '{0}'...", tokenFilePath );
-				Shared.UserAccessToken = UserAccessToken.Load( tokenFilePath );
+				Log.Info( "Loading user access token from: '{0}'...", Shared.UserAccessTokenFilePath );
+				Shared.UserAccessToken = UserAccessToken.Load( Shared.UserAccessTokenFilePath );
 
 				// If the token is no longer valid, then refresh & save it
 				if ( !await Shared.UserAccessToken.Validate() ) {
@@ -65,7 +62,7 @@ namespace TwitchBot {
 					await Shared.UserAccessToken.DoRefresh();
 
 					Log.Info( "Saving the refreshed user access token..." );
-					Shared.UserAccessToken.Save( tokenFilePath );
+					Shared.UserAccessToken.Save( Shared.UserAccessTokenFilePath );
 
 				} else {
 					Log.Info( "The user access token is still valid, no refresh required." );
@@ -74,7 +71,7 @@ namespace TwitchBot {
 			} catch ( FileNotFoundException ) {
 				Log.Info( "User access token file does not exist, requesting fresh token..." );
 				Shared.UserAccessToken = await UserAccessToken.RequestAuthorization( Config.TwitchOAuthRedirectURL, Config.TwitchOAuthScopes );
-				Shared.UserAccessToken.Save( tokenFilePath );
+				Shared.UserAccessToken.Save( Shared.UserAccessTokenFilePath );
 			}
 
 			// Fetch this account's name
