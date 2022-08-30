@@ -10,6 +10,7 @@ using TwitchBot.Twitch.OAuth;
 namespace TwitchBot {
 	public class Program {
 
+		// Windows-only
 		[DllImport( "Kernel32" )]
 		private static extern bool SetConsoleCtrlHandler( EventHandler handler, bool add );
 		private delegate bool EventHandler( CtrlType signal );
@@ -92,9 +93,12 @@ namespace TwitchBot {
 			twitchClient.OnChannelUpdate += OnChannelUpdate;
 			Log.Info( "Registered Twitch client event handlers." );
 
-			consoleCtrlHandler += new EventHandler( OnApplicationExit );
-			SetConsoleCtrlHandler( consoleCtrlHandler, true );
-			Log.Info( "Registered application exit event handler." );
+			// TODO: Solution for Linux & Docker environment stop signal
+			if ( Shared.IsWindows() ) {
+				consoleCtrlHandler += new EventHandler( OnApplicationExit );
+				SetConsoleCtrlHandler( consoleCtrlHandler, true );
+				Log.Info( "Registered application exit event handler." );
+			}
 
 			// Connect to Twitch chat
 			// NOTE: Blocks until the connection is closed
