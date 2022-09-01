@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -22,6 +23,10 @@ namespace TwitchBot {
 
 		// The main entry-point of the program
 		public static async Task Main( string[] arguments ) {
+
+			// Display application name and version
+			AssemblyName assemblyName = Assembly.GetExecutingAssembly().GetName();
+			Log.Info( "This is {0}, version {1}.{2}.{3}.", assemblyName.Name, assemblyName.Version?.Major, assemblyName.Version?.Minor, assemblyName.Version?.Build );
 
 			// Display directory paths for convenience
 			Log.Info( "Data directory is: '{0}'.", Config.DataDirectory );
