@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using viral32111.JsonExtensions;
 
@@ -49,14 +50,24 @@ namespace TwitchBot {
 			// Will hold the loaded (or newly created) configuration
 			JsonObject? configuration;
 
-			// Try to load the configuration from the above file
+			// Try to load the configuration from the above file path
 			try {
 				configuration = JsonExtensions.ReadFromFile( configFilePath );
 				Log.Info( "Loaded configuration from file: '{0}'.", configFilePath );
 
-				// TODO: Check for missing keys, add them if required, and save to file (may be missing due to user error, or older version of the configuration structure)
+				// Ensure that no properties are missing (this adds new properties to older configuration files)
+				try {
+					EnsurePropertiesExist( configuration, defaultConfiguration );
+				} catch ( Exception exception ) {
+					Log.Error( exception.Message );
+					Environment.Exit( 1 );
+					return;
+				}
 
-			// Otherwise, create it with default values in the above file
+				// Resave the file to save any new properties that might have been added
+				configuration.SaveToFile();
+
+			// Otherwise, create it with default values in the above file path
 			} catch ( FileNotFoundException ) {
 				configuration = JsonExtensions.CreateNewFile( configFilePath, defaultConfiguration );
 				Log.Info( "Created default configuration in file: '{0}'.", configFilePath );
@@ -77,7 +88,7 @@ namespace TwitchBot {
 				TwitchOAuthBaseURL = configuration.NestedGet<string>( "twitch.oauth.url" );
 				TwitchOAuthIdentifier = configuration.NestedGet<string>( "twitch.oauth.identifier" );
 				TwitchOAuthRedirectURL = configuration.NestedGet<string>( "twitch.oauth.redirect" );
-				TwitchOAuthScopes = configuration.NestedGet<string[]>( "twitch.oauth.scopes" );
+				TwitchOAuthScopes = configuration.NestedGet( "twitch.oauth.scopes" )!.AsArray<string>();
 
 				// Twitch Chat IRC
 				TwitchChatBaseURL = configuration.NestedGet<string>( "twitch.chat.url" );
@@ -106,6 +117,69 @@ namespace TwitchBot {
 				Log.Error( exception.Message );
 				Environment.Exit( 1 );
 			}
+
+		}
+
+		// Ensures all properties in the second object exist in the first object
+		private static void EnsurePropertiesExist( JsonObject badObject, JsonObject goodObject ) {
+			
+			// Loop through a list of all nested properties in the second object
+			foreach ( string propertyPath in GetNestedPropertyList( goodObject ) ) {
+
+				// Skip properties which exist & are set in the first object
+				if ( HasNestedProperty( badObject, propertyPath ) ) continue;
+
+				// Get the property from the second object
+				JsonNode? goodProperty = goodObject.NestedGet( propertyPath );
+
+				// Make a copy of the property because you cannot set using node that already has a parent - https://stackoverflow.com/a/71590703
+				// TODO: Add a JsonNode.Clone() method to JsonExtensions
+				JsonNode? copiedProperty = JsonSerializer.Deserialize<JsonNode>( goodProperty );
+
+				// Add the property to the first object with the value of the second object
+				badObject.NestedSet( propertyPath, copiedProperty );
+
+			}
+
+		}
+
+		// Checks if a nested property path exists in the object
+		// TODO: Add JsonObject.NestedHas() method to JsonExtensions
+		private static bool HasNestedProperty( JsonObject jsonObject, string propertyPath ) {
+			try {
+				_ = jsonObject.NestedGet( propertyPath );
+				return true;
+			} catch ( JsonPropertyNotFoundException ) {
+				return false;
+			};
+		}
+
+		// Recursively gets a list of nested properties in the object
+		// TODO: Add this to JsonExtensions
+		private static string[] GetNestedPropertyList( JsonObject jsonObject, string currentPath = "", List<string>? propertyPaths = null ) {
+			
+			// Create an empty list to hold the property paths if it is not set
+			propertyPaths ??= new();
+
+			// Loop through each valid property in the object...
+			foreach ( KeyValuePair<string, JsonNode?> property in jsonObject ) {
+				if ( property.Value == null ) continue;
+
+				// Create the path to this property by using the last call's path and this property name
+				string propertyPath = currentPath + property.Key;
+
+				// Try to repeat this call if this is an object, otherwise add it to the list as it must be a value
+				try {
+					JsonObject nextObject = property.Value.AsObject();
+					GetNestedPropertyList( nextObject, propertyPath + ".", propertyPaths );
+				} catch ( InvalidOperationException ) {
+					propertyPaths.Add( propertyPath );
+				}
+
+			}
+
+			// Convert the list to an array
+			return propertyPaths.ToArray();
 
 		}
 
@@ -138,6 +212,17 @@ namespace TwitchBot {
 				[ "tunnel" ] = new JsonObject() {
 					[ "version" ] = "2022.8.2",
 					[ "checksum" ] = Shared.IsWindows() ? "61ed94712c1bfbf585c06de5fea82588662daeeb290727140cf2b199ca9f9c53" : "c971d24ae2f133b2579ac6fa3b1af34847e0f3e332766fbdc5f36521f410271a"
+				}
+			},
+			[ "database" ] = new JsonObject() {
+				[ "name" ] = "",
+				[ "server" ] = new JsonObject() {
+					[ "address" ] = "",
+					[ "port" ] = 3306
+				},
+				[ "user" ] = new JsonObject() {
+					[ "name" ] = "",
+					[ "password" ] = ""
 				}
 			}
 		};
