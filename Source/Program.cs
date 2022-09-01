@@ -1,8 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using TwitchBot.Features;
 using TwitchBot.Twitch.OAuth;

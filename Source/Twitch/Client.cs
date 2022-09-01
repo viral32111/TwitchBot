@@ -99,6 +99,23 @@ namespace TwitchBot.Twitch {
 			// Start receiving messages in the background
 			Task receiveTask = ReceiveMessages();
 
+			/*Task.Run( async () => {
+				Console.WriteLine( "Started checking if connected..." );
+
+				while ( wsClient.State == WebSocketState.Open ) {
+					if ( wsClient.State != WebSocketState.Open ) {
+						Console.WriteLine( "Connection no longer alive, disconnecting..." );
+						await Disconnect();
+						break;
+					} else {
+						//Console.WriteLine( "Connection still alive, rechecking in 10 seconds..." );
+						Thread.Sleep( 10000 );
+					}
+				}
+
+				Console.WriteLine( "Stopped checking if connected." );
+			} );*/
+
 			// Run the connection established event handlers, if there are any
 			OnConnect?.Invoke( this, new EventArgs() );
 
@@ -207,6 +224,7 @@ namespace TwitchBot.Twitch {
 			await Task.Delay( 10 ); // TODO: Why is responseSource still null in the ReceiveMessages() task despite that this happens before SendAsync()?
 
 			await wsClient.SendAsync( Encoding.UTF8.GetBytes( messageToSend ), WebSocketMessageType.Text, true, CancellationToken.None );
+			//Console.WriteLine( "Sent: {0}'", messageToSend );
 
 			if ( responseSource != null ) {
 				InternetRelayChat.Message[] responseMessages = await responseSource.Task;
@@ -239,9 +257,12 @@ namespace TwitchBot.Twitch {
 						Console.WriteLine( message.ToString() );
 						Console.ForegroundColor = currentColor;
 
+						//Console.WriteLine( "Command: '{0}', '{1}', '{2}' | Parameters: '{3}'", message.Command, message.Command == "PING", message.Command == InternetRelayChat.Command.Ping, message.Parameters );
+
 						// https://dev.twitch.tv/docs/irc#keepalive-messages
-						if ( message.Command == InternetRelayChat.Command.Ping ) { // message.Host == null && 
-							await SendMessage( $"PONG :{message.Parameters}" );
+						if ( message.Command == InternetRelayChat.Command.Ping ) { // message.Host == null &&
+							await SendMessage( $"PONG :{message.Parameters}", false );
+							Console.WriteLine( "Ponged!" );
 							continue;
 						}
 
@@ -272,6 +293,8 @@ namespace TwitchBot.Twitch {
 
 				Array.Clear( receiveBuffer );
 			}
+
+			Console.WriteLine( "Finished receiving messages" );
 		}
 
 		private void HandleUnexpectedMessage( InternetRelayChat.Message message ) {
@@ -346,6 +369,9 @@ namespace TwitchBot.Twitch {
 					} else {
 						Console.WriteLine( "Unexpected User Message: '{0}'", message.ToString() );
 					}
+
+				} else {
+					Console.WriteLine( "what is a '{0}' ?", message.ToString() );
 				}
 			}
 
