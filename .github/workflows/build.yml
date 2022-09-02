@@ -92,7 +92,6 @@ jobs:
           type=semver,pattern={{major}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
-          type=sha,format=short,prefix=commit-
 
     - name: Build & Push Docker Image
       uses: docker/build-push-action@v3
