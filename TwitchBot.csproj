@@ -26,4 +26,9 @@
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
+  
+	<ItemGroup>
+	  <PackageReference Include="MySql.Data" Version="8.0.30" />
+	  <PackageReference Include="viral32111.JsonExtensions" Version="0.1.2" />
+	</ItemGroup>
 </Project>
