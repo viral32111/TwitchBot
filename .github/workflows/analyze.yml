@@ -2,17 +2,21 @@ name: Analyze
 
 on:
   push:
-    branches: [ main ]
+    branches:
+    - '**'
   pull_request:
-    branches: [ main ]
+    branches:
+    - '**'
   schedule:
     - cron: '0 0 * * 0'
+  workflow_dispatch:
 
 jobs:
   analyze:
     name: Ubuntu
     runs-on: ubuntu-latest
     permissions:
+      packages: read
       security-events: write
 
     steps:
@@ -23,6 +27,15 @@ jobs:
       uses: github/codeql-action/init@v2
       with:
         languages: csharp
+
+    - name: Add GitHub Packages Source
+      run: |
+        dotnet nuget add source \
+          --name github \
+          --username ${{ github.repository_owner }} \
+          --password ${{ secrets.GITHUB_TOKEN }} \
+          --store-password-in-clear-text \
+          "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
     - name: Autobuild
       uses: github/codeql-action/autobuild@v2
