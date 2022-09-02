@@ -124,62 +124,15 @@ namespace TwitchBot {
 		private static void EnsurePropertiesExist( JsonObject badObject, JsonObject goodObject ) {
 			
 			// Loop through a list of all nested properties in the second object
-			foreach ( string propertyPath in GetNestedPropertyList( goodObject ) ) {
+			foreach ( string propertyPath in goodObject.NestedList() ) {
 
-				// Skip properties which exist & are set in the first object
-				if ( HasNestedProperty( badObject, propertyPath ) ) continue;
+				// Skip properties which exist in the first object
+				if ( badObject.NestedHas( propertyPath ) ) continue;
 
-				// Get the property from the second object
-				JsonNode? goodProperty = goodObject.NestedGet( propertyPath );
-
-				// Make a copy of the property because you cannot set using node that already has a parent - https://stackoverflow.com/a/71590703
-				// TODO: Add a JsonNode.Clone() method to JsonExtensions
-				JsonNode? copiedProperty = JsonSerializer.Deserialize<JsonNode>( goodProperty );
-
-				// Add the property to the first object with the value of the second object
-				badObject.NestedSet( propertyPath, copiedProperty );
+				// Add the property to the first object with the value from the second object
+				badObject.NestedSet( propertyPath, goodObject.NestedGet( propertyPath ).Clone() );
 
 			}
-
-		}
-
-		// Checks if a nested property path exists in the object
-		// TODO: Add JsonObject.NestedHas() method to JsonExtensions
-		private static bool HasNestedProperty( JsonObject jsonObject, string propertyPath ) {
-			try {
-				_ = jsonObject.NestedGet( propertyPath );
-				return true;
-			} catch ( JsonPropertyNotFoundException ) {
-				return false;
-			};
-		}
-
-		// Recursively gets a list of nested properties in the object
-		// TODO: Add this to JsonExtensions
-		private static string[] GetNestedPropertyList( JsonObject jsonObject, string currentPath = "", List<string>? propertyPaths = null ) {
-			
-			// Create an empty list to hold the property paths if it is not set
-			propertyPaths ??= new();
-
-			// Loop through each valid property in the object...
-			foreach ( KeyValuePair<string, JsonNode?> property in jsonObject ) {
-				if ( property.Value == null ) continue;
-
-				// Create the path to this property by using the last call's path and this property name
-				string propertyPath = currentPath + property.Key;
-
-				// Try to repeat this call if this is an object, otherwise add it to the list as it must be a value
-				try {
-					JsonObject nextObject = property.Value.AsObject();
-					GetNestedPropertyList( nextObject, propertyPath + ".", propertyPaths );
-				} catch ( InvalidOperationException ) {
-					propertyPaths.Add( propertyPath );
-				}
-
-			}
-
-			// Convert the list to an array
-			return propertyPaths.ToArray();
 
 		}
 
