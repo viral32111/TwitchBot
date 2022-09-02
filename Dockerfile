@@ -21,9 +21,7 @@ RUN mkdir --verbose --parents ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${
 	chown --changes --recursive ${USER_ID}:${USER_ID} ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE}
 
 # Add build artifacts
-COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.deps.json ${DIRECTORY_BIN}/
-COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.runtimeconfig.json ${DIRECTORY_BIN}/
-COPY --chown=${USER_ID}:${USER_ID} ./TwitchBot.dll ${DIRECTORY_BIN}/
+COPY --chown=${USER_ID}:${USER_ID} ./ ${DIRECTORY_BIN}/
 
 # Initialize to create configuration file
 RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${FILE_CONFIG} && \

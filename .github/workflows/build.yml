@@ -69,9 +69,15 @@ jobs:
       with:
         name: TwitchBot
         path: |
-          ./bin/Release/net6.0/TwitchBot.dll
+          ./bin/Release/net6.0/**.dll
           ./bin/Release/net6.0/TwitchBot.deps.json
           ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: TwitchBot
+        path: ./artifacts
 
     - name: Extract Metadata for Docker
       id: metadata
@@ -91,7 +97,7 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         file: ./Dockerfile
-        context: ./bin/Release/net6.0/
+        context: ./artifacts
         push: ${{ github.event_name != 'pull_request' }}
         pull: true
         tags: ${{ steps.metadata.outputs.tags }}
@@ -112,14 +118,11 @@ jobs:
           ${{ steps.metadata.outputs.tags }}
           ```
 
-    - name: Create Assets for Release
+    - name: Bundle Build Artifacts
       if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
       run: |
-        cd ./bin/Release/net6.0
-        zip ../../../TwitchBot.zip \
-          ./TwitchBot.dll \
-          ./TwitchBot.deps.json \
-          ./TwitchBot.runtimeconfig.json
+        cd ./artifacts
+        zip -r ../TwitchBot.zip $(find ./)
 
     - name: Upload Assets to Release
       if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
