@@ -69,9 +69,10 @@ jobs:
       with:
         name: TwitchBot
         path: |
-          ./bin/Release/net6.0/**.dll
+          ./bin/Release/net6.0/*.dll
           ./bin/Release/net6.0/TwitchBot.deps.json
           ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
+          ./bin/Release/net6.0/runtimes/*/lib/*/*.dll
 
     - name: Download Build Artifacts
       uses: actions/download-artifact@v3
