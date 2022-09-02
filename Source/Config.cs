@@ -45,7 +45,7 @@ namespace TwitchBot {
 			string[] arguments = Environment.GetCommandLineArgs().ToList().FindAll( value => !value.StartsWith( "--" ) ).Skip( 1 ).ToArray();
 
 			// Use the first argument as the configuration file path, or default to a file in the current working directory
-			string configFilePath = arguments.Length > 0 ? arguments[ 1 ] : Path.Combine( Directory.GetCurrentDirectory(), "twitch-bot.json" );
+			string configFilePath = arguments.Length > 0 ? arguments[ 0 ] : Path.Combine( Directory.GetCurrentDirectory(), "twitch-bot.json" );
 
 			// Will hold the loaded (or newly created) configuration
 			JsonObject? configuration;
