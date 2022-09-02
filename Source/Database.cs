@@ -10,8 +10,17 @@ namespace TwitchBot {
 		// The connection to the database
 		private static readonly MySqlConnection databaseConnection;
 
-		// Creates the connection using the configured details & credentials
+		// Runs on initialization...
 		static Database() {
+
+			// Check the server connection details & user credentials are set
+			if ( string.IsNullOrEmpty( Config.DatabaseName ) || string.IsNullOrEmpty( Config.DatabaseServerAddress ) || Config.DatabaseServerPort < 0 || Config.DatabaseServerPort > 65536 || string.IsNullOrEmpty( Config.DatabaseUserName ) || string.IsNullOrEmpty( Config.DatabaseUserPassword ) ) {
+				Log.Error( "One or more of the database connection details and/or database user credentials configuration properties are not set!" );
+				Environment.Exit( 1 );
+				return;
+			}
+
+			// Create the connection using the configured connection details & user credentials
 			databaseConnection = new( new MySqlConnectionStringBuilder() {
 				Database = Config.DatabaseName,
 				Server = Config.DatabaseServerAddress,
@@ -19,8 +28,8 @@ namespace TwitchBot {
 				UserID = Config.DatabaseUserName,
 				Password = Config.DatabaseUserPassword
 			}.GetConnectionString( true ) );
-			
 			Log.Info( "Initialized the database connection." );
+
 		}
 
 		// Opens the connection to the database
