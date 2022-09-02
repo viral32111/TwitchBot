@@ -18,7 +18,7 @@
 		<NeutralLanguage>en-GB</NeutralLanguage>
 		<AssemblyVersion>$(FileVersion)</AssemblyVersion>
 		<PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
-		<FileVersion>0.2.1</FileVersion>
+		<FileVersion>0.3.0</FileVersion>
 		<Version>$(FileVersion)</Version>
 		<SignAssembly>False</SignAssembly>
 	</PropertyGroup>
