@@ -35,6 +35,10 @@ namespace TwitchBot {
 			// Create required directories
 			Shared.CreateDirectories();
 
+			// Deprecation notice for the stream history file
+			string streamHistoryFile = Path.Combine( Config.DataDirectory, "stream-history.json" );
+			if ( File.Exists( streamHistoryFile ) ) Log.Warn( "The stream history file ({0}) is deprecated, it can safely be deleted.", streamHistoryFile );
+
 			// Exit now if this launch was only to initialize files
 			if ( arguments.Contains( "--init" ) ) {
 				Log.Info( "Initialized configuration & directories, exiting..." );
@@ -57,6 +61,14 @@ namespace TwitchBot {
 			} else {
 				Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			}
+
+			// Open the connection to the database
+			await Database.Open();
+			Log.Info( "Opened connection to the database ({0}).", Database.GetServerVersion() );
+
+			// Setup tables in the database
+			await Database.SetupTables();
+			Log.Info( "Setup tables in the database." );
 
 			// Attempt to load an existing user access token from disk
 			try {
@@ -119,6 +131,10 @@ namespace TwitchBot {
 			//Log.Info( "Stopping Cloudflare Tunnel client..." );
 			//Cloudflare.StopTunnel();
 
+			// Close the connection to the database
+			Database.Close().Wait();
+			Log.Info( "Closed connection to the database." );
+
 			Log.Info( "Disconnecting..." );
 			twitchClient.Disconnect().Wait();
 
@@ -156,6 +172,14 @@ namespace TwitchBot {
 				Log.Warn( "No primary channel configured to join." );
 			}
 
+			// DEBUGGING
+			try {
+				Console.WriteLine( "Updating stream history..." );
+				await Streak.FetchCurrentStreak( 127154290 );
+			} catch ( Exception ex ) {
+				Console.WriteLine( ex.Message );
+			}
+
 		}
 
 		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
@@ -189,23 +213,23 @@ namespace TwitchBot {
 				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
 
 			// Streaming streak
-			} else if ( e.Message.Content == "!streak" ) {
+			/*} else if ( e.Message.Content == "!streak" ) {
 				int channelId = e.Message.Channel.Identifier.GetValueOrDefault( 127154290 ); // Rawreltv, cus .Channel.Identifier is probably broken tbh
-				string channelName = e.Message.Channel.Name.Substring( 0, 1 ).ToUpper() + e.Message.Channel.Name.Substring( 1 ); // hardcoded title case
-				Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", channelName, channelId );
+				//string channelName = e.Message.Channel.Name.Substring( 0, 1 ).ToUpper() + e.Message.Channel.Name.Substring( 1 ); // hardcoded title case
+				Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", e.Message.Channel.Name, channelId );
 				try {
 					Streak? streak = await Streak.GetLatestStreak( channelId );
 					if ( streak != null ) {
-						Console.WriteLine( "Duration (Days): {0}, Streams: {1}, Total Hours: {2}, Started: {3}", streak.Duration, streak.StreamCount, streak.StreamDuration / 60 / 60, streak.StartedAt );
-						await e.Message.Channel.Send( twitchClient, $"{channelName} has been streaming every day for the last {streak.Duration} day(s), with a total of {streak.StreamDuration / 60 / 60} hour(s) across {streak.StreamCount} stream(s)!" );
+						Console.WriteLine( "Duration (Days): {0}, Streams: {1}, Total Hours: {2} ({3}s), Started: {4}", streak.Duration, streak.StreamCount, streak.StreamDuration / 60 / 60, streak.StreamDuration, streak.StartedAt );
+						await e.Message.Channel.Send( twitchClient, $"During the month of September I will be doing my best to be live everyday! So far I have been live everyday for the last {streak.Duration} day(s), with a total of {streak.StreamDuration / 60 / 60} hour(s) across {streak.StreamCount} stream(s)!" );
 					} else {
 						Console.WriteLine( "There is no streak yet :c" );
-						await e.Message.Channel.Send( twitchClient, $"{channelName} has no streaming streak yet." );
+						await e.Message.Channel.Send( twitchClient, $"During the month of September I will be doing my best to be live everyday!" );
 					}
 				} catch ( Exception ex ) {
 					Console.WriteLine( ex.Message );
 					await e.Message.Channel.Send( twitchClient, $"Sorry, something went wrong!" );
-				}
+				}*/
 			}
 
 		}
@@ -241,6 +265,10 @@ namespace TwitchBot {
 
 			//Log.Info( "Stopping Cloudflare Tunnel client..." );
 			//Cloudflare.StopTunnel(); // TODO: Kill tunnel on error?
+
+			// Close the connection to the database
+			Database.Close().Wait();
+			Log.Info( "Closed connection to the database." );
 
 			Log.Info( "Disconnecting..." );
 			await twitchClient.Disconnect();
