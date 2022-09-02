@@ -34,8 +34,8 @@ namespace TwitchBot.Features {
 		}
 
 		// Gets the rounded-up duration (in days) of the streak (days elapsed since earliest stream)
-		public double GetDuration() {
-			return Math.Ceiling( ( DateTimeOffset.UtcNow - GetStartDate() ).TotalDays );
+		public int GetDuration() {
+			return ( int ) Math.Ceiling( ( DateTimeOffset.UtcNow - GetStartDate() ).TotalDays );
 		}
 
 		// Gets the number of streams in this streak
