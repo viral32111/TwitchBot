@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     paths:
-    - 'Source/**'
+    - '**.cs'
     - '**.csproj'
     - '**.sln'
     - 'Dockerfile'
