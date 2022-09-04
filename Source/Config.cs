@@ -38,6 +38,14 @@ namespace TwitchBot {
 		public static readonly string DatabaseUserName;
 		public static readonly string DatabaseUserPassword;
 
+		// Redis
+		public static readonly int RedisDatabase;
+		public static readonly string RedisKeyPrefix;
+		public static readonly string RedisServerAddress;
+		public static readonly int RedisServerPort;
+		public static readonly string RedisUserName;
+		public static readonly string RedisUserPassword;
+
 		// Loads the configuration when the program is started
 		static Config() {
 
@@ -108,6 +116,14 @@ namespace TwitchBot {
 				DatabaseUserName = configuration.NestedGet<string>( "database.user.name" );
 				DatabaseUserPassword = configuration.NestedGet<string>( "database.user.password" );
 
+				// Redis
+				RedisDatabase = configuration.NestedGet<int>( "redis.database" );
+				RedisKeyPrefix = configuration.NestedGet<string>( "redis.prefix" );
+				RedisServerAddress = configuration.NestedGet<string>( "redis.server.address" );
+				RedisServerPort = configuration.NestedGet<int>( "redis.server.port" );
+				RedisUserName = configuration.NestedGet<string>( "redis.user.name" );
+				RedisUserPassword = configuration.NestedGet<string>( "redis.user.password" );
+
 				// Fallback to the user secrets store if the Twitch OAuth secret is not in the configuration file
 				string? twitchOAuthSecret = configuration.NestedGet( "twitch.oauth.secret" )?.AsValue().ToString();
 				TwitchOAuthSecret = !string.IsNullOrEmpty( twitchOAuthSecret ) ? twitchOAuthSecret : UserSecrets.TwitchOAuthSecret;
@@ -131,6 +147,7 @@ namespace TwitchBot {
 
 				// Add the property to the first object with the value from the second object
 				badObject.NestedSet( propertyPath, goodObject.NestedGet( propertyPath ).Clone() );
+				Log.Info( "Added missing property '{0}' to configuration file.", propertyPath );
 
 			}
 
@@ -175,6 +192,18 @@ namespace TwitchBot {
 				},
 				[ "user" ] = new JsonObject() {
 					[ "name" ] = "",
+					[ "password" ] = ""
+				}
+			},
+			[ "redis" ] = new JsonObject() {
+				[ "database" ] = 0,
+				[ "prefix" ] = "twitchbot:",
+				[ "server" ] = new JsonObject() {
+					[ "address" ] = "",
+					[ "port" ] = 6379
+				},
+				[ "user" ] = new JsonObject() {
+					[ "name" ] = "default",
 					[ "password" ] = ""
 				}
 			}

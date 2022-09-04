@@ -70,6 +70,10 @@ namespace TwitchBot {
 			await Database.SetupTables();
 			Log.Info( "Setup tables in the database." );
 
+			// Open Redis connection
+			await Redis.Open();
+			Log.Info( "Connected to Redis." );
+
 			// Attempt to load an existing user access token from disk
 			try {
 				Log.Info( "Loading user access token from: '{0}'...", Shared.UserAccessTokenFilePath );
@@ -134,6 +138,10 @@ namespace TwitchBot {
 			// Close the connection to the database
 			Database.Close().Wait();
 			Log.Info( "Closed connection to the database." );
+
+			// Close Redis connection
+			Redis.Close().Wait();
+			Log.Info( "Disconnected from Redis." );
 
 			Log.Info( "Disconnecting..." );
 			twitchClient.Disconnect().Wait();
@@ -269,6 +277,9 @@ namespace TwitchBot {
 			// Close the connection to the database
 			Database.Close().Wait();
 			Log.Info( "Closed connection to the database." );
+
+			Redis.Close().Wait();
+			Log.Info( "Disconnected from Redis." );
 
 			Log.Info( "Disconnecting..." );
 			await twitchClient.Disconnect();

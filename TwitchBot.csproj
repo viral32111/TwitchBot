@@ -18,7 +18,7 @@
 		<NeutralLanguage>en-GB</NeutralLanguage>
 		<AssemblyVersion>$(FileVersion)</AssemblyVersion>
 		<PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
-		<FileVersion>0.3.1</FileVersion>
+		<FileVersion>0.3.2</FileVersion>
 		<Version>$(FileVersion)</Version>
 		<SignAssembly>False</SignAssembly>
 	</PropertyGroup>
@@ -29,6 +29,7 @@
   
 	<ItemGroup>
 	  <PackageReference Include="MySql.Data" Version="8.0.30" />
+	  <PackageReference Include="StackExchange.Redis" Version="2.6.48" />
 	  <PackageReference Include="viral32111.JsonExtensions" Version="0.2.0" />
 	</ItemGroup>
 </Project>
