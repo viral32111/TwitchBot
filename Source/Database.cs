@@ -26,7 +26,8 @@ namespace TwitchBot {
 				Server = Config.DatabaseServerAddress,
 				Port = ( uint ) Config.DatabaseServerPort,
 				UserID = Config.DatabaseUserName,
-				Password = Config.DatabaseUserPassword
+				Password = Config.DatabaseUserPassword,
+				SslMode = MySqlSslMode.Disabled
 			}.GetConnectionString( true ) );
 			Log.Info( "Initialized the database connection." );
 
