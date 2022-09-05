@@ -215,7 +215,7 @@ namespace TwitchBot {
 			// Streaming streak
 			} else if ( e.Message.Content == "!streak" ) {
 				int channelIdentifier = e.Message.Channel.Identifier.GetValueOrDefault( 127154290 ); // Rawreltv, cus .Channel.Identifier is probably broken tbh
-				
+
 				try {
 					Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", e.Message.Channel.Name, channelIdentifier );
 					Streak? streak = await Streak.FetchCurrentStreak( channelIdentifier );

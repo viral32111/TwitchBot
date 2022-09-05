@@ -23,7 +23,7 @@ namespace TwitchBot.Features {
 
 			// Sort the streams from newest to oldest
 			Array.Sort( Streams, ( Stream a, Stream b ) => {
-				return a.StartedAt.CompareTo( b.StartedAt );
+				return b.StartedAt.CompareTo( a.StartedAt );
 			} );
 
 		}
