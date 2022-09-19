@@ -21,7 +21,7 @@ namespace TwitchBot.Twitch {
 		}
 
 		public async Task Send( Client client, string message ) {
-			await client.SendMessage( $"PRIVMSG #{Name} :{message}", expectResponse: false );
+			await client.SendAsync( InternetRelayChat.Command.PrivateMessage, $"#{Name} :{message}" );
 		}
 	}
 }

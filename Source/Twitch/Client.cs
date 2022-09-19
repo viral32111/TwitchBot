@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.WebSockets;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 
 // A client for connecting to Twitch chat
@@ -23,292 +20,144 @@ using System.Threading.Tasks;
 // on user modded/unmodded
 
 namespace TwitchBot.Twitch {
-	public class Client {
+	public class Client : InternetRelayChat.Client {
 
-		// A websocket client to use for the underlying connection
-		// NOTE: Cannot inherit from this because it is sealed
-		private readonly ClientWebSocket wsClient = new();
+		// Regular expression for matching the "Your Host" command
+		private readonly Regex hostPattern = new( @"^Your host is (?'host'.+)$" );
 
-		// A completion source for responses to sent websocket messages
-		// NOTE: Should be null whenever a response is not expected
-		private TaskCompletionSource<InternetRelayChat.Message[]>? responseSource = null;
+		// Event that runs after we connect to the server
+		public new delegate Task OnConnectHandler( Client client );
+		public new event OnConnectHandler? OnConnect;
 
-		// Regular expression for matching the "Your Host" (004) post-authentication message
-		private readonly Regex HostPattern = new( @"^Your host is (.+)$" );
-
-		// The IRC-style Twitch host name that messages originate from
-		// NOTE: This changes later on once authentication completes and we are told what our host is
-		private string ExpectedHost = "tmi.twitch.tv";
-
-		// The connection state
-		public bool Connected { get; private set; } = false;
-
-		// An event that is ran whenever an error occurs
-		// TODO: For some reason throwing an exception like normal just does nothing...? I think it's something to do with the receive message background task?
-		public delegate Task OnErrorHandler( object sender, OnErrorEventArgs e );
-		public event OnErrorHandler? OnError;
-
-		// An event that is ran whenever a connection is established
-		public delegate Task OnConnectHandler( object sender, EventArgs e );
-		public event OnConnectHandler? OnConnect;
-
-		// An event that is ran whenever the client is ready
-		public delegate Task OnReadyHandler( object sender, OnReadyEventArgs e );
+		// Event that runs after the client is ready
+		public delegate Task OnReadyHandler( Client client, GlobalUser user );
 		public event OnReadyHandler? OnReady;
 
-		// An event that is ran whenever a user joins a channel
-		public delegate Task OnChannelJoinHandler( object sender, OnChannelJoinLeaveEventArgs e );
+		// Event that runs after a user joins a channel
+		public delegate Task OnChannelJoinHandler( Client client, User user, Channel channel, bool isMe );
 		public event OnChannelJoinHandler? OnChannelJoin;
 
-		// An event that is ran whenever a user leaves a channel
-		public delegate Task OnChannelLeaveHandler( object sender, OnChannelJoinLeaveEventArgs e );
+		// Event that runs after a user leaves a channel
+		public delegate Task OnChannelLeaveHandler( Client client, User user, Channel channel );
 		public event OnChannelLeaveHandler? OnChannelLeave;
 
-		// An event that is ran whenever a chat message is received
-		public delegate Task OnChatMessageHandler( object sender, OnChatMessageEventArgs e );
+		// Event that runs after a chat message is received
+		public delegate Task OnChatMessageHandler( Client client, Message message );
 		public event OnChatMessageHandler? OnChatMessage;
 
-		// An event that is ran whenever a user is updated in a channel
-		public delegate Task OnUserUpdateHandler( object sender, OnUserUpdateEventArgs e );
+		// Event that runs after a user is updated in a channel
+		public delegate Task OnUserUpdateHandler( Client client, User user );
 		public event OnUserUpdateHandler? OnUserUpdate;
 
-		// An event that is ran whenever a channel is updated
-		public delegate Task OnChannelUpdateHandler( object sender, OnChannelUpdateEventArgs e );
+		// Event that runs after a channel is updated
+		public delegate Task OnChannelUpdateHandler( Client client, Channel channel );
 		public event OnChannelUpdateHandler? OnChannelUpdate;
 
-		// Synchronous function to connect to the websocket server, or timeout after a specified period
-		// NOTE: This blocks until the connection is over, which is intended behavior to keep the application running
-		public void Connect( string serverUrl, bool connectInsecurely = false, int timeoutSeconds = 10 ) {
-			if ( wsClient.State != WebSocketState.None ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Attempt to connect while already connected" ) );
-				return;
-			}
-
-			Uri serverUri = new( $"{( connectInsecurely ? "ws" : "wss" )}://{serverUrl}" );
-			Task connectTask = wsClient.ConnectAsync( serverUri, CancellationToken.None );
-
-			Task<Task> raceTask = Task.WhenAny( connectTask, Task.Delay( timeoutSeconds * 1000 ) );
-			if ( raceTask.Result != connectTask ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Timed out while connecting to websocket server" ) );
-				return;
-			}
-
-			// We are now connected
-			Connected = true;
-
-			// Start receiving messages in the background
-			Task receiveTask = ReceiveMessages();
-
-			/*Task.Run( async () => {
-				Console.WriteLine( "Started checking if connected..." );
-
-				while ( wsClient.State == WebSocketState.Open ) {
-					if ( wsClient.State != WebSocketState.Open ) {
-						Console.WriteLine( "Connection no longer alive, disconnecting..." );
-						await Disconnect();
-						break;
-					} else {
-						//Console.WriteLine( "Connection still alive, rechecking in 10 seconds..." );
-						Thread.Sleep( 10000 );
-					}
-				}
-
-				Console.WriteLine( "Stopped checking if connected." );
-			} );*/
-
-			// Run the connection established event handlers, if there are any
-			OnConnect?.Invoke( this, new EventArgs() );
-
-			// Wait for the message receive task to finish
-			receiveTask.Wait();
+		// Constructor to register event handlers
+		public Client() {
+			OnMessage += ProcessMessage;
+			base.OnConnect += OnBaseConnect;
 		}
 
-		public async Task Disconnect( string reason = "Goodbye." ) {
-			if ( wsClient.State != WebSocketState.Open ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Attempt to disconnect while not connected" ) );
-				return;
-			}
+		// Request capabilities for this connection
+		public async Task RequestCapabilities( string[] desiredCapabilities ) {
 
-			await wsClient.CloseAsync( WebSocketCloseStatus.NormalClosure, reason, CancellationToken.None );
+			// Send the capabilities request, and wait for response message(s)
+			InternetRelayChat.Message[] capabilitiesResponseMessages = await SendExpectResponseAsync( InternetRelayChat.Command.RequestCapabilities, string.Join( ' ', desiredCapabilities ) );
 
-			// We are no longer connected
-			Connected = false;
+			// Get a list of the granted capabilities from the first response message
+			string[]? grantedCapabilities = capabilitiesResponseMessages[ 0 ].Parameters?.Split( ' ' );
+
+			// Fail if granted capabilities is invalid
+			if ( grantedCapabilities == null ) throw new Exception( "No granted capabilities in capabilities response message" );
+
+			// Fail if the desired capabilities do not match the granted capabilities
+			if ( !desiredCapabilities.SequenceEqual( grantedCapabilities ) ) throw new Exception( "Not all desired capabilities were granted" );
+
 		}
 
-		// Asynchronous function to send a capabilities request to the websocket server
-		public async Task RequestCapabilities( string[] capabilitiesRequested ) {
-			InternetRelayChat.Message[]? capabilitiesResponses = await SendMessage( $"CAP REQ :{string.Join( ' ', capabilitiesRequested )}" );
-			if ( capabilitiesResponses == null ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Never received response for capabilities request" ) );
-				return;
-			}
-
-			string[]? capabilitiesResponse = capabilitiesResponses[ 0 ].Parameters?.Split( ' ' );
-			if ( capabilitiesResponse == null ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Received invalid IRC-styled message for capabilities request" ) );
-				return;
-			}
-
-			if ( !capabilitiesResponse.SequenceEqual( capabilitiesRequested ) ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Not all capabilities were granted" ) );
-				return;
-			}
-		}
-
-		// Asynchronous function to send account credentials to the websocket server
+		// Authenticate using OAuth credentials
 		public async Task Authenticate( string accountName, string accessToken ) {
-			await SendMessage( $"PASS oauth:{accessToken}", expectResponse: false );
-			InternetRelayChat.Message[]? authResponses = await SendMessage( $"NICK {accountName}" );
-			if ( authResponses == null ) {
-				OnError?.Invoke( this, new OnErrorEventArgs( "Never received response for authentication" ) );
-				return;
-			}
 
-			// The Twitch authentication reply contains multiple messages
-			foreach ( InternetRelayChat.Message message in authResponses ) {
-				if ( message.Command == Command.Notice && message.Parameters == "Login authentication failed" ) {
-					OnError?.Invoke( this, new OnErrorEventArgs( "Failed to authenticate" ) );
-					return;
-				}
+			// Send the access token as the password
+			await SendAsync( InternetRelayChat.Command.Password, $"oauth:{accessToken}" );
 
-				if ( !string.IsNullOrEmpty( message.Parameters ) ) {
+			// Send the account name as the username, and wait for response message(s)
+			InternetRelayChat.Message[]? authenticationResponseMessages = await SendExpectResponseAsync( InternetRelayChat.Command.Username, accountName );
+
+			// Loop through each message as the Twitch authentication reply contains multiple messages
+			foreach ( InternetRelayChat.Message message in authenticationResponseMessages ) {
+
+				// Fail if authentication failed
+				if ( message.Command == Command.Notice && message.Parameters == "Login authentication failed" ) throw new Exception( "Failed to authenticate" );
+
+				// Does the message have parameters?
+				if ( !string.IsNullOrWhiteSpace( message.Parameters ) ) {
 
 					// Remove the account name from the start of the parameters value
-					string parameters = ( message.Parameters.StartsWith( $"{accountName.ToLower()} :" ) ? message.Parameters[ ( accountName.Length + 2 ).. ] : message.Parameters );
+					string parameters = message.Parameters.StartsWith( $"{accountName.ToLower()} :" ) ? message.Parameters[ ( accountName.Length + 2 ).. ] : message.Parameters;
 
+					// Is the welcome command?
 					if ( message.Command == InternetRelayChat.Command.Welcome ) Log.Info( "The server welcomes us." );
 
-					if ( message.Command == InternetRelayChat.Command.YourHost ) {
-						Match hostMatch = HostPattern.Match( parameters );
+					// Are we being told our host?
+					else if ( message.Command == InternetRelayChat.Command.YourHost ) {
+
+						// Run regular expression match on parameters to extract the hostname
+						Match hostMatch = hostPattern.Match( parameters );
+
+						// Set the expected hostname to the match group, if successful
 						if ( hostMatch.Success ) {
-							ExpectedHost = hostMatch.Groups[ 1 ].Value;
+							ExpectedHost = hostMatch.Groups[ "host" ].Value;
 							Log.Info( "The expected host is now: '{0}'", ExpectedHost );
 						}
+
 					}
 
-					if ( message.Command == InternetRelayChat.Command.MoTD ) Log.Info( "MoTD: '{0}'", parameters );
+					// Is this the Message of The Day?
+					else if ( message.Command == InternetRelayChat.Command.MoTD ) Log.Info( "MoTD: '{0}'", parameters );
 
+				// The message does not have parameters
 				} else {
-					if ( message.Command == Command.GlobalUserState ) {
-						if ( message.Tags == null ) {
-							OnError?.Invoke( this, new OnErrorEventArgs( "Tags missing for user state command" ) );
-							return;
-						}
 
+					// Are we being informed about ourselves?
+					if ( message.Command == Command.GlobalUserState && message.Tags.Count > 0 ) {
+
+						// Update ourselves in state
 						GlobalUser user = State.UpdateGlobalUser( message.Tags );
-						OnReady?.Invoke( this, new OnReadyEventArgs( user ) );
+
+						// Run the ready event
+						OnReady?.Invoke( this, user );
+
 					}
+
 				}
 			}
 		}
 
-		public async Task JoinChannel( string channelName ) {
-			await SendMessage( $"JOIN #{channelName.ToLower()}", expectResponse: false );
+		// Joins a channel's chat
+		public async Task JoinChannel( string channelName ) { // TODO: Use channel identifier instead?
+			await SendAsync( InternetRelayChat.Command.Join, channelName.ToLower() );
 
-			// TODO: Check ':peeksabot!peeksabot@peeksabot.tmi.twitch.tv JOIN #rawreltv' response here & fire channel join event...?
+			// TODO: Check ':peeksabot!peeksabot@peeksabot.tmi.twitch.tv JOIN #rawreltv' response here & run the channel join event...?
 		}
 
+		// Run the connect event when the IRC client connects to the server
+		private async Task OnBaseConnect( InternetRelayChat.Client _ ) => OnConnect?.Invoke( this );
 
-		// Asynchronous function to send messages to the websocket server
-		// NOTE: This is NOT to send messages to Twitch chat, see Channel.Send() for that
-		public async Task<InternetRelayChat.Message[]?> SendMessage( string messageToSend, bool expectResponse = true ) {
-			if ( expectResponse == true ) {
-				if ( responseSource != null ) {
-					OnError?.Invoke( this, new OnErrorEventArgs( "Response source was never cleaned up" ) );
-					return null;
-				}
-
-				responseSource = new();
-			}
-
-			await Task.Delay( 10 ); // TODO: Why is responseSource still null in the ReceiveMessages() task despite that this happens before SendAsync()?
-
-			await wsClient.SendAsync( Encoding.UTF8.GetBytes( messageToSend ), WebSocketMessageType.Text, true, CancellationToken.None );
-			//Console.WriteLine( "Sent: {0}'", messageToSend );
-
-			if ( responseSource != null ) {
-				InternetRelayChat.Message[] responseMessages = await responseSource.Task;
-				responseSource = null;
-
-				return responseMessages;
-			}
-
-			return null;
-		}
-
-		// Asynchronous function to constantly receive websocket messages from the server
-		// NOTE: This is intended to be ran in the background (i.e, not awaited)
-		private async Task ReceiveMessages( int bufferSize = 4096 ) {
-			byte[] receiveBuffer = new byte[ bufferSize ];
-
-			// Run forever while the underlying websocket connection is open
-			// NOTE: This will not run for the final close received message
-			while ( wsClient.State == WebSocketState.Open ) {
-				WebSocketReceiveResult receiveResult = await wsClient.ReceiveAsync( receiveBuffer, CancellationToken.None );
-
-				if ( receiveResult.MessageType == WebSocketMessageType.Text ) {
-					string receivedMessage = Encoding.UTF8.GetString( receiveBuffer );
-
-					List<InternetRelayChat.Message> ourMessages = new();
-					foreach ( InternetRelayChat.Message message in InternetRelayChat.Message.Parse( receivedMessage ) ) {
-
-						ConsoleColor currentColor = Console.ForegroundColor;
-						Console.ForegroundColor = ConsoleColor.DarkRed;
-						Console.WriteLine( message.ToString() );
-						Console.ForegroundColor = currentColor;
-
-						//Console.WriteLine( "Command: '{0}', '{1}', '{2}' | Parameters: '{3}'", message.Command, message.Command == "PING", message.Command == InternetRelayChat.Command.Ping, message.Parameters );
-
-						// https://dev.twitch.tv/docs/irc#keepalive-messages
-						if ( message.Command == InternetRelayChat.Command.Ping ) { // message.Host == null &&
-							await SendMessage( $"PONG :{message.Parameters}", false );
-							Console.WriteLine( "Ponged!" );
-							continue;
-						}
-
-						if ( message.Host == null || !message.Host.EndsWith( ExpectedHost ) ) {
-							OnError?.Invoke( this, new OnErrorEventArgs( "Received message from foreign server" ) );
-							return;
-						}
-
-						if ( responseSource == null ) {
-							HandleUnexpectedMessage( message );
-						} else {
-							ourMessages.Add( message );
-						}
-
-					}
-
-					if ( responseSource != null ) {
-						responseSource.SetResult( ourMessages.ToArray() );
-						//responseSource = null; // TODO: Is this needed? - It is done in the SendMessage function
-					}
-
-				} else if ( receiveResult.MessageType == WebSocketMessageType.Close ) {
-					Console.WriteLine( "Connection closed." );
-
-				} else {
-					OnError?.Invoke( this, new OnErrorEventArgs( $"Received unknown message type {receiveResult.MessageType} of {receiveResult.Count} bytes" ) );
-				}
-
-				Array.Clear( receiveBuffer );
-			}
-
-			Console.WriteLine( "Finished receiving messages" );
-		}
-
-		private void HandleUnexpectedMessage( InternetRelayChat.Message message ) {
+		// Processes received messages
+		private async Task ProcessMessage( InternetRelayChat.Client client, InternetRelayChat.Message message ) {
 
 			// Server
-			if ( message.IsServer( ExpectedHost ) ) {
+			if ( message.IsServer( ExpectedHost! ) ) {
 				if ( message.Command == Command.UserState && message.Parameters != null && message.Tags != null ) {
 					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
 					User user = State.UpdateUser( channel, message.Tags );
-					OnUserUpdate?.Invoke( this, new OnUserUpdateEventArgs( user ) );
+					OnUserUpdate?.Invoke( this, user );
 
 				} else if ( message.Command == Command.RoomState && message.Parameters != null && message.Tags != null ) {
 					Channel channel = State.UpdateChannel( message.Parameters[ 1.. ], message.Tags );
-					OnChannelUpdate?.Invoke( this, new OnChannelUpdateEventArgs( channel ) );
+					OnChannelUpdate?.Invoke( this, channel );
 
 				} else {
 					Console.WriteLine( "Unexpected Server Message: '{0}'", message.ToString() );
@@ -317,11 +166,11 @@ namespace TwitchBot.Twitch {
 			} else {
 
 				// Command
-				if ( message.IsFor( Shared.MyAccountName!, ExpectedHost ) == true ) {
+				if ( message.IsUser( Shared.MyAccountName!, ExpectedHost! ) == true ) {
 					if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
 						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
 						User user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
-						OnChannelJoin?.Invoke( this, new OnChannelJoinLeaveEventArgs( user, true ) );
+						OnChannelJoin?.Invoke( this, user, channel, true );
 
 					} else if ( message.Command == InternetRelayChat.Command.Names && message.Parameters != null ) {
 						List<string> userNames = new( message.Parameters[ ( message.Parameters.IndexOf( ':' ) + 1 ).. ].Split( ' ' ) );
@@ -341,7 +190,7 @@ namespace TwitchBot.Twitch {
 						Console.WriteLine( "Unexpected Command Message: '{0}'", message.ToString() );
 					}
 
-					// User
+				// User
 				} else if ( message.User != null ) {
 					if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Parameters != null && message.Tags != null ) {
 						string[] parameters = message.Parameters.Split( ':', 2 );
@@ -354,17 +203,17 @@ namespace TwitchBot.Twitch {
 
 						State.UpdateUser( channel, message.Tags );
 
-						OnChatMessage?.Invoke( this, new OnChatMessageEventArgs( theMessage ) );
+						OnChatMessage?.Invoke( this, theMessage );
 
 					} else if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
 						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
 						User user = State.GetOrCreateUser( channel, message.User );
-						OnChannelJoin?.Invoke( this, new OnChannelJoinLeaveEventArgs( user ) );
+						OnChannelJoin?.Invoke( this, user, channel, false );
 
 					} else if ( message.Command == InternetRelayChat.Command.Leave && message.Parameters != null ) {
 						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
 						User user = State.GetOrCreateUser( channel, message.User );
-						OnChannelLeave?.Invoke( this, new OnChannelJoinLeaveEventArgs( user ) );
+						OnChannelLeave?.Invoke( this, user, channel );
 
 					} else {
 						Console.WriteLine( "Unexpected User Message: '{0}'", message.ToString() );
@@ -377,47 +226,5 @@ namespace TwitchBot.Twitch {
 
 		}
 
-	}
-
-	public class OnChannelJoinEventArgs : EventArgs {
-		public Channel Channel { get; init; }
-
-		public OnChannelJoinEventArgs( Channel channel ) => Channel = channel;
-	}
-
-	public class OnErrorEventArgs : EventArgs {
-		public string Message { get; init; }
-
-		public OnErrorEventArgs( string message ) => Message = message;
-	}
-
-	public class OnChatMessageEventArgs : EventArgs {
-		public Message Message { get; init; }
-
-		public OnChatMessageEventArgs( Message message ) => Message = message;
-	}
-
-	public class OnReadyEventArgs : EventArgs {
-		public GlobalUser User { get; init; }
-		public OnReadyEventArgs( GlobalUser user ) => User = user;
-	}
-
-	public class OnUserUpdateEventArgs : EventArgs {
-		public User User { get; init; }
-
-		public OnUserUpdateEventArgs( User user ) => User = user;
-	}
-
-	public class OnChannelUpdateEventArgs : EventArgs {
-		public Channel Channel { get; init; }
-
-		public OnChannelUpdateEventArgs( Channel channel ) => Channel = channel;
-	}
-
-	public class OnChannelJoinLeaveEventArgs : EventArgs {
-		public User User { get; init; }
-		public bool IsMe { get; init; }
-
-		public OnChannelJoinLeaveEventArgs( User user, bool isMe = false ) => (User, IsMe) = (user, isMe);
 	}
 }

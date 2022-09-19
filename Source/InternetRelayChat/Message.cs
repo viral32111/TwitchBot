@@ -1,96 +1,109 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using System.Text.RegularExpressions;
 
-// Parses IRC-styled messages
 // https://ircv3.net/specs/extensions/message-tags.html
 // https://datatracker.ietf.org/doc/html/rfc1459.html#section-2.3.1
 
 namespace TwitchBot.InternetRelayChat {
 	public class Message {
-		private static readonly Regex Pattern = new( @"^(?>@(.+?) )?(?>:(?>([\w.]+))?(?>!([\w.]+))?(?>@?([\w.]+)) )?(\d{3}|[A-Z]+)(?> \* ([A-Z]*))?(?> :?(?>\* )?(.+))?$" );
 
-		public Dictionary<string, string?>? Tags = null;
+		// Regular expression to divide up components of a fully-formed IRC message
+		private static readonly Regex parsePattern = new( @"^(?>@(?'tags'.+?) )?(?>:(?>(?'nick'[\w.]+))?(?>!(?'user'[\w.]+))?(?>@?(?'host'[\w.]+)) )?(?'command'\d{3}|[A-Z]+)(?> \*)?(?> :?(?'params'.+))?$" );
 
-		public string? Nick = null;
-		public string? User = null;
-		public string? Host = null;
+		// Components of an IRC message
+		public Dictionary<string, string?> Tags = new();
+		public readonly string? Nick; // Prefix
+		public readonly string? User; // Prefix
+		public readonly string? Host; // Prefix
+		public readonly string Command;
+		public readonly string? Parameters;
 
-		public string? Command = null;
-		public string? SubCommand = null;
+		// Create a server message from optional components
+		public Message( string? tags, string? nick, string? user, string? host, string command, string? parameters ) {
 
-		public string? Parameters = null;
+			// Loop through the tags, if any
+			if ( tags != null ) foreach ( string entireTag in tags.Split( ';' ) ) {
+				if ( string.IsNullOrWhiteSpace( entireTag ) ) continue;
 
-		public Message( string tags, string nick, string user, string host, string command, string subCommand, string parameters ) {
-			if ( !string.IsNullOrEmpty( tags ) ) {
-				Tags = new();
+				// Split the tag up into name and value
+				string[] tag = entireTag.Split( '=', 2 );
 
-				foreach ( string tag in tags.Split( ';' ) ) {
-					if ( string.IsNullOrEmpty( tag ) ) continue;
+				// Skip tags without a name
+				if ( string.IsNullOrWhiteSpace( tag[ 0 ] ) ) continue;
 
-					string[] tagPair = tag.Split( '=', 2 );
-					if ( string.IsNullOrEmpty( tagPair[ 0 ] ) ) continue;
-
-					Tags.Add( tagPair[ 0 ], ( string.IsNullOrEmpty( tagPair[ 1 ] ) ? null : tagPair[ 1 ] ) );
-				}
+				// Add the tag to the dictionary
+				Tags.Add( tag[ 0 ], tag[ 1 ] );
 			}
 
-			if ( !string.IsNullOrEmpty( nick ) ) Nick = nick;
-			if ( !string.IsNullOrEmpty( user ) ) User = user;
-			if ( !string.IsNullOrEmpty( host ) ) Host = host;
+			// Set the remaining component properties
+			Nick = nick;
+			User = user;
+			Host = host;
+			Command = command;
+			Parameters = parameters;
 
-			if ( !string.IsNullOrEmpty( command ) ) Command = command;
-			if ( !string.IsNullOrEmpty( subCommand ) ) SubCommand = subCommand;
-
-			if ( !string.IsNullOrEmpty( parameters ) ) Parameters = parameters;
 		}
 
-		public bool IsServer( string host ) {
-			return Nick == null && User == null && Host == host;
+		// Create a client message, for sending to a server
+		public Message( string command, string? parameters = null ) {
+			Command = command;
+			Parameters = parameters;
 		}
 
-		public bool IsFor( string user, string host ) {
-			return Host == $"{user.ToLower()}.{host}"; // Nick == user.ToLower() && User == user.ToLower() && 
-		}
+		// Parse a message sent by a server
+		public static Message[] Parse( string rawMessages ) {
 
-		public override string ToString() {
-			return $"{( Tags != null ? $"@{TagsToString()} " : "" )}{( Host != null ? ":" + ( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host ) + " " : "" )}{Command}{( Parameters != null ? " :" + Parameters : "" )}";
-		}
-
-		public static Message[] Parse( string rawMessage ) {
+			// Holds the parsed messages
 			List<Message> messages = new();
 
-			// Split the entire message every new line because sometimes responses can contain multiple messages
-			foreach ( string singleMessage in rawMessage.Split( "\r\n" ) ) {
-				if ( string.IsNullOrEmpty( singleMessage ) ) continue;
+			// Loop over each message (servers sometimes send multiple messages at once)
+			foreach ( string rawMessage in rawMessages.Split( "\r\n" ) ) {
+				if ( string.IsNullOrWhiteSpace( rawMessage ) ) continue;
 
-				Match ircMatch = Pattern.Match( singleMessage );
-				if ( !ircMatch.Success ) continue;
+				// Skip if the message did not match the regular expression
+				Match match = parsePattern.Match( rawMessage );
+				if ( !match.Success ) continue;
 
-				messages.Add( new Message(
-					ircMatch.Groups[ 1 ].Value, // Tags
+				Console.WriteLine( $"Parsing IRC message: '{rawMessage}'" );
 
-					ircMatch.Groups[ 2 ].Value, // Nick
-					ircMatch.Groups[ 3 ].Value, // User
-					ircMatch.Groups[ 4 ].Value, // Host
-
-					ircMatch.Groups[ 5 ].Value, // Command
-					ircMatch.Groups[ 6 ].Value, // Sub-Command
-
-					ircMatch.Groups[ 7 ].Value // Parameters
+				// Create a new message from the groups in the match, and add it to the list
+				messages.Add( new(
+					match.Groups[ "tags" ].Value.NullIfWhiteSpace(),
+					match.Groups[ "nick" ].Value.NullIfWhiteSpace(),
+					match.Groups[ "user" ].Value.NullIfWhiteSpace(),
+					match.Groups[ "host" ].Value.NullIfWhiteSpace(),
+					match.Groups[ "command" ].Value.NullIfWhiteSpace() ?? throw new Exception( "No command found in IRC message" ), // Fail if there is no command
+					match.Groups[ "params" ].Value.NullIfWhiteSpace()
 				) );
+
 			}
 
+			// Return the parsed messages as a fixed-length array
 			return messages.ToArray();
+
 		}
 
-		private string? TagsToString() {
-			if ( Tags == null ) return null;
+		// Parse a message sent by a server, as an array of bytes
+		public static Message[] Parse( byte[] bytes, int length ) => Parse( Encoding.UTF8.GetString( bytes, 0, length ) );
 
-			List<string> tags = new();
+		// Convert the message back to the original string
+		public override string ToString() => string.Concat(
+			Tags.Count > 0 ? $"@{Tags.Join()} " : string.Empty,
+			Host != null ? ":" + ( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host ) + " " : string.Empty,
+			Command == InternetRelayChat.Command.Notice ? Command + " *" : Command, // Why are NOTICE commands always followed by an asterisk
+			Parameters != null ? " :" + Parameters : string.Empty
+		);
 
-			foreach ( KeyValuePair<string, string?> tag in Tags ) tags.Add( $"{tag.Key}={tag.Value}" );
+		// Convert the message to an array of bytes
+		public byte[] GetBytes() => Encoding.UTF8.GetBytes( ToString() );
 
-			return string.Join( ';', tags );
-		}
+		// Checks if this message is a "server message" (i.e. not from a user)
+		public bool IsServer( string host ) => Nick == null && User == null && Host == host;
+
+		// Checks if this message is a "user message" (i.e. from a user)
+		public bool IsUser( string user, string host ) => Nick == user || User == user || Host == $"{user}.{host}";
+
 	}
 }

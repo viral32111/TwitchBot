@@ -171,7 +171,7 @@ namespace TwitchBot {
 					} ),
 				},
 				[ "chat" ] = new JsonObject() {
-					[ "url" ] = "irc-ws.chat.twitch.tv",
+					[ "url" ] = "irc.chat.twitch.tv",
 					[ "channel" ] = "",
 				},
 				[ "api" ] = new JsonObject() {

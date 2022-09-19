@@ -9,6 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using TwitchBot.Features;
 using TwitchBot.Twitch.OAuth;
+using TwitchBot.Twitch;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace TwitchBot {
 	public class Program {
@@ -19,7 +22,7 @@ namespace TwitchBot {
 		private delegate bool EventHandler( CtrlType signal );
 		private static EventHandler? consoleCtrlHandler;
 
-		private static readonly Twitch.Client twitchClient = new();
+		private static readonly Client client = new();
 
 		// The main entry-point of the program
 		public static async Task Main( string[] arguments ) {
@@ -99,21 +102,21 @@ namespace TwitchBot {
 			}
 
 			// Fetch this account's name
-			JsonObject userResponse = await Twitch.API.Request( "users" );
+			JsonObject userResponse = await API.Request( "users" );
 			string? accountName = userResponse[ "data" ]?[ 0 ]?[ "display_name" ]?.ToString();
 			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "Failed to fetch account name." );
 			Shared.MyAccountName = accountName;
 			Log.Info( "My account name is: '{0}' ({1}, {2}).", Shared.MyAccountName, userResponse[ "data" ]?[ 0 ]?[ "id" ]?.ToString(), userResponse[ "data" ]?[ 0 ]?[ "created_at" ]?.ToString() );
 
 			// Register event handlers for the Twitch client
-			twitchClient.OnError += OnError;
-			twitchClient.OnConnect += OnConnect;
-			twitchClient.OnReady += OnReady;
-			twitchClient.OnChannelJoin += OnChannelJoin;
-			twitchClient.OnChannelLeave += OnChannelLeave;
-			twitchClient.OnChatMessage += OnChatMessage;
-			twitchClient.OnUserUpdate += OnUserUpdate;
-			twitchClient.OnChannelUpdate += OnChannelUpdate;
+			client.OnConnect += OnConnect;
+			client.OnSecureCommunication += OnSecureCommunication;
+			client.OnReady += OnReady;
+			client.OnChannelJoin += OnChannelJoin;
+			client.OnChannelLeave += OnChannelLeave;
+			client.OnChatMessage += OnChatMessage;
+			client.OnUserUpdate += OnUserUpdate;
+			client.OnChannelUpdate += OnChannelUpdate;
 			Log.Info( "Registered Twitch client event handlers." );
 
 			// TODO: Solution for Linux & Docker environment stop signal
@@ -124,9 +127,8 @@ namespace TwitchBot {
 			}
 
 			// Connect to Twitch chat
-			// NOTE: Blocks until the connection is closed
 			Log.Info( "Connecting to Twitch chat..." );
-			twitchClient.Connect( Config.TwitchChatBaseURL );
+			await client.ConnectAsync( Config.TwitchChatBaseURL );
 
 		}
 
@@ -143,9 +145,11 @@ namespace TwitchBot {
 			Redis.Close().Wait();
 			Log.Info( "Disconnected from Redis." );
 
+			// Close chat connection
 			Log.Info( "Disconnecting..." );
-			twitchClient.Disconnect().Wait();
+			client.CloseAsync().Wait();
 
+			// Exit application
 			Log.Info( "Exiting..." );
 			Environment.Exit( 0 );
 
@@ -153,71 +157,80 @@ namespace TwitchBot {
 
 		}
 
-		private static async Task OnConnect( object sender, EventArgs e ) {
+		private static async Task OnConnect( Client client ) {
 
 			if ( Shared.UserAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
 			Log.Info( "Requesting capabilities..." );
-			await twitchClient.RequestCapabilities( new string[] {
-				Twitch.Capability.Commands,
-				Twitch.Capability.Membership,
-				Twitch.Capability.Tags
+			await client.RequestCapabilities( new string[] {
+				Capability.Commands,
+				Capability.Membership,
+				Capability.Tags
 			} );
 
 			Log.Info( "Authenticating..." );
 
-			await twitchClient.Authenticate( Shared.MyAccountName!, Shared.UserAccessToken.Access );
+			await client.Authenticate( Shared.MyAccountName!, Shared.UserAccessToken.Access );
 		}
 
-		private static async Task OnReady( object sender, Twitch.OnReadyEventArgs e ) {
+		private static async Task OnSecureCommunication( InternetRelayChat.Client client, X509Certificate serverCertificate, SslProtocols protocol, CipherAlgorithmType cipherAlgorithm, int cipherStrength ) {
+			
+			string protocolName = Shared.SslProtocolNames[ protocol ];
+			string cipherName = Shared.CipherAlgorithmNames[ cipherAlgorithm ];
 
-			Log.Info( "Ready as user '{0}' ({1}).", e.User.Name, e.User.Identifier );
+			Console.WriteLine( $"Started secure communication with '{serverCertificate.Subject}' (verified by '{serverCertificate.Issuer}' until {serverCertificate.GetExpirationDateString()}), using {protocolName} ({cipherName}-{cipherStrength})." );
+
+		}
+
+		private static async Task OnReady( Client client, GlobalUser user ) {
+
+			Log.Info( "Ready as user '{0}' ({1}).", user.Name, user.Identifier );
 
 			if ( !string.IsNullOrEmpty( Config.TwitchChatPrimaryChannelName ) ) {
 				Log.Info( "Joining channel '{0}'...", Config.TwitchChatPrimaryChannelName );
-				await twitchClient.JoinChannel( Config.TwitchChatPrimaryChannelName );
+				await client.JoinChannel( Config.TwitchChatPrimaryChannelName );
 			} else {
 				Log.Warn( "No primary channel configured to join." );
 			}
 
 		}
 
-		private static async Task OnChannelJoin( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
+		private static async Task OnChannelJoin( Client client, User user, Channel channel, bool isMe ) {
 
-			Log.Info( "User '{0}' joined channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
+			Log.Info( "User '{0}' joined channel '{1}'.", user.Global.Name, user.Channel.Name );
 
 			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
 			
 		}
 
-		private static async Task OnChannelLeave( object sender, Twitch.OnChannelJoinLeaveEventArgs e ) {
+		private static async Task OnChannelLeave( Client client, User user, Channel channel ) {
 
-			Log.Info( "User '{0}' left channel '{1}'.", e.User.Global.Name, e.User.Channel.Name );
+			Log.Info( "User '{0}' left channel '{1}'.", user.Global.Name, user.Channel.Name );
 
 		}
 
-		private static async Task OnChatMessage( object sender, Twitch.OnChatMessageEventArgs e ) {
+		private static async Task OnChatMessage( Client client, Message message ) {
 
-			Log.Info( "User '{0}' in '{1}' said '{2}'.", e.Message.User.Global.Name, e.Message.Channel.Name, e.Message.Content );
+			Log.Info( "User '{0}' in '{1}' said '{2}'.",message.User.Global.Name, message.Channel.Name, message.Content );
 
-			if ( e.Message.Content == "!hello" ) {
-				await e.Message.Channel.Send( twitchClient, "Hello World!" );
-			} else if ( e.Message.Content == "!random" ) {
+			if ( message.Content == "!hello" ) {
+				await message.Channel.Send( client, "Hello World!" );
+			} else if ( message.Content == "!random" ) {
 				Random random = new();
-				await e.Message.Channel.Send( twitchClient, $"Your random number is {random.Next( 100 )}" );
-			} else if ( e.Message.Content == "!cake" ) {
-				await e.Message.Channel.Send( twitchClient, $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
+				await message.Channel.Send( client, $"Your random number is {random.Next( 100 )}" );
+			} else if ( message.Content == "!cake" ) {
+				await message.Channel.Send( client, $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
 			/*} else if ( e.Message.Content == "!socials" ) {
 				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );*/
-			} else if ( e.Message.Content == "!whoami" ) {
-				await e.Message.Channel.Send( twitchClient, $"You are {e.Message.User.Global.Name}, your name color is {e.Message.User.Global.Color}, your account identifier is {e.Message.User.Global.Identifier}, you are {( e.Message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( e.Message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
+			} else if ( message.Content == "!whoami" ) {
+				await message.Channel.Send( client, $"You are {message.User.Global.Name}, your name color is {message.User.Global.Color}, your account identifier is {message.User.Global.Identifier}, you are {( message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
 
 			// Streaming streak
-			} else if ( e.Message.Content == "!streak" ) {
-				int channelIdentifier = e.Message.Channel.Identifier.GetValueOrDefault( 127154290 ); // Rawreltv, cus .Channel.Identifier is probably broken tbh
+			} else if ( message.Content == "!streak" ) {
+				int channelIdentifier = message.Channel.Identifier.GetValueOrDefault( 127154290 ); // Rawreltv, cus .Channel.Identifier is probably broken tbh
 
 				try {
-					Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", e.Message.Channel.Name, channelIdentifier );
+					Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", message.Channel.Name, channelIdentifier );
 					Streak? streak = await Streak.FetchCurrentStreak( channelIdentifier );
 					
 					if ( streak != null ) {
@@ -227,49 +240,49 @@ namespace TwitchBot {
 						DateTimeOffset startedAt = streak.GetStartDate();
 
 						Console.WriteLine( "Duration (Days): {0}, Streams: {1}, Total Hours: {2} ({3}s), Started: {4}", durationDays, streamCount, totalStreamHours, streak.GetStreamDuration(), startedAt );
-						await e.Message.Channel.Send( twitchClient, $"During the month of September I will be doing my best to be live everyday! So far I have been live everyday for the last {durationDays} day(s), with a total of {totalStreamHours} hour(s) across {streamCount} stream(s)!" );
+						await message.Channel.Send( client, $"During the month of September I will be doing my best to be live everyday! So far I have been live everyday for the last {durationDays} day(s), with a total of {totalStreamHours} hour(s) across {streamCount} stream(s)!" );
 					
 					} else {
 						Console.WriteLine( "There is no streak yet :c" );
-						await e.Message.Channel.Send( twitchClient, $"During the month of September I will be doing my best to be live everyday!" );
+						await message.Channel.Send( client, $"During the month of September I will be doing my best to be live everyday!" );
 					}
 				
 				} catch ( Exception exception ) {
 					Console.WriteLine( exception.Message );
-					await e.Message.Channel.Send( twitchClient, $"Sorry, something went wrong!" );
+					await message.Channel.Send( client, $"Sorry, something went wrong!" );
 				}
 			}
 
 		}
 
-		private static async Task OnUserUpdate( object sender, Twitch.OnUserUpdateEventArgs e ) {
+		private static async Task OnUserUpdate( Client client, User user ) {
 
-			Log.Info( "User '{0}' ({1}) updated.", e.User.Global.Name, e.User.Global.Identifier );
-			Log.Info( " Type: '{0}'", e.User.Global.Type );
-			Log.Info( " Color: '{0}'", e.User.Global.Color );
-			Log.Info( " Badges: '{0}'", e.User.Global.Badges != null ? string.Join( ',', e.User.Global.Badges ) : null );
-			Log.Info( " Badge Information: '{0}'", e.User.Global.BadgeInformation );
-			Log.Info( " Emote Sets: '{0}'", e.User.Global.EmoteSets != null ? string.Join( ',', e.User.Global.EmoteSets ) : null );
-			Log.Info( " Channel: '{0}'", e.User.Channel.Name );
-			Log.Info( "  Is Moderator: '{0}'", e.User.IsModerator );
-			Log.Info( "  Is Subscriber: '{0}'", e.User.IsSubscriber );
-
-		}
-
-		private static async Task OnChannelUpdate( object sender, Twitch.OnChannelUpdateEventArgs e ) {
-
-			Log.Info( "Channel '{0}' ({1}) updated.", e.Channel.Name, e.Channel.Identifier );
-			Log.Info( " Is Emote Only: '{0}'", e.Channel.IsEmoteOnly );
-			Log.Info( " Is Followers Only: '{0}'", e.Channel.IsFollowersOnly );
-			Log.Info( " Is Subscribers Only: '{0}'", e.Channel.IsSubscribersOnly );
-			Log.Info( " Is R9K: '{0}'", e.Channel.IsR9K );
-			Log.Info( " Is Rituals: '{0}'", e.Channel.IsRituals );
+			Log.Info( "User '{0}' ({1}) updated.", user.Global.Name, user.Global.Identifier );
+			Log.Info( " Type: '{0}'", user.Global.Type );
+			Log.Info( " Color: '{0}'", user.Global.Color );
+			Log.Info( " Badges: '{0}'", user.Global.Badges != null ? string.Join( ',', user.Global.Badges ) : null );
+			Log.Info( " Badge Information: '{0}'", user.Global.BadgeInformation );
+			Log.Info( " Emote Sets: '{0}'", user.Global.EmoteSets != null ? string.Join( ',', user.Global.EmoteSets ) : null );
+			Log.Info( " Channel: '{0}'", user.Channel.Name );
+			Log.Info( "  Is Moderator: '{0}'", user.IsModerator );
+			Log.Info( "  Is Subscriber: '{0}'", user.IsSubscriber );
 
 		}
 
-		private static async Task OnError( object sender, Twitch.OnErrorEventArgs e ) {
+		private static async Task OnChannelUpdate( Client client, Channel channel ) {
 
-			Log.Info( "An error has occurred: '{0}'.", e.Message );
+			Log.Info( "Channel '{0}' ({1}) updated.", channel.Name, channel.Identifier );
+			Log.Info( " Is Emote Only: '{0}'", channel.IsEmoteOnly );
+			Log.Info( " Is Followers Only: '{0}'", channel.IsFollowersOnly );
+			Log.Info( " Is Subscribers Only: '{0}'", channel.IsSubscribersOnly );
+			Log.Info( " Is R9K: '{0}'", channel.IsR9K );
+			Log.Info( " Is Rituals: '{0}'", channel.IsRituals );
+
+		}
+
+		private static async Task OnError( Client client, string message ) {
+
+			Log.Info( "An error has occurred: '{0}'.", message );
 
 			//Log.Info( "Stopping Cloudflare Tunnel client..." );
 			//Cloudflare.StopTunnel(); // TODO: Kill tunnel on error?
@@ -278,12 +291,15 @@ namespace TwitchBot {
 			Database.Close().Wait();
 			Log.Info( "Closed connection to the database." );
 
+			// Close Redis connection
 			Redis.Close().Wait();
 			Log.Info( "Disconnected from Redis." );
 
+			// Close chat connection
 			Log.Info( "Disconnecting..." );
-			await twitchClient.Disconnect();
+			await client.CloseAsync();
 
+			// Exit application
 			Log.Info( "Exiting..." );
 			Environment.Exit( 1 );
 

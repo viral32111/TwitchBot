@@ -1,6 +1,8 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
 using TwitchBot.Twitch.OAuth;
@@ -14,6 +16,26 @@ namespace TwitchBot {
 		public static string? MyAccountName;
 		public static UserAccessToken? UserAccessToken;
 		public static readonly string UserAccessTokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
+
+		public static readonly Dictionary<SslProtocols, string> SslProtocolNames = new() {
+			{ SslProtocols.Tls, "TLSv1.0" },
+			{ SslProtocols.Tls11, "TLSv1.1" },
+			{ SslProtocols.Tls12, "TLSv1.2" },
+			{ SslProtocols.Tls13, "TLSv1.3" }
+		};
+
+		public static readonly Dictionary<CipherAlgorithmType, string> CipherAlgorithmNames = new() {
+			{ CipherAlgorithmType.Aes, "AES" },
+			{ CipherAlgorithmType.Aes128, "AES" },
+			{ CipherAlgorithmType.Aes192, "AES" },
+			{ CipherAlgorithmType.Aes256, "AES" },
+
+			{ CipherAlgorithmType.Des, "DES" },
+			{ CipherAlgorithmType.TripleDes, "Triple-DES" },
+
+			{ CipherAlgorithmType.Rc2, "RC2" },
+			{ CipherAlgorithmType.Rc4, "RC4" }
+		};
 
 		public static string GenerateRandomString( int length ) {
 			StringBuilder builder = new( length );

@@ -56,5 +56,18 @@ namespace TwitchBot {
 
 		}
 
+		public static string? NullIfEmpty( this string str ) => string.IsNullOrEmpty( str ) ? null : str;
+		public static string? NullIfWhiteSpace( this string str ) => string.IsNullOrWhiteSpace( str ) ? null : str;
+
+		public static string? Join( this Dictionary<string, string?> dictionary, char separator = ';', char pairSeparator = '=' ) {
+			if ( dictionary.Count == 0 ) return null;
+
+			List<string> pairs = new();
+
+			foreach ( KeyValuePair<string, string?> pair in dictionary ) pairs.Add( string.Concat( pair.Key, pairSeparator, pair.Value ) );
+
+			return string.Join( separator, pairs );
+		}
+
 	}
 }
