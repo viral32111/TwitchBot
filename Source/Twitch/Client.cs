@@ -148,82 +148,92 @@ namespace TwitchBot.Twitch {
 		// Processes received messages
 		private async Task ProcessMessage( InternetRelayChat.Client client, InternetRelayChat.Message message ) {
 
-			// Server
-			if ( message.IsServer( ExpectedHost! ) ) {
+			// Is this a server message?
+			if ( message.IsServer() ) {
+
+				// Are we being told a user's new state?
 				if ( message.Command == Command.UserState && message.Parameters != null && message.Tags != null ) {
+					
+					// Update the channel and user in state
 					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
 					User user = State.UpdateUser( channel, message.Tags );
+
+					// Run the user update event
 					OnUserUpdate?.Invoke( this, user );
 
+				// Are we being told a channel's new state?
 				} else if ( message.Command == Command.RoomState && message.Parameters != null && message.Tags != null ) {
+					
+					// Update the channel in state
 					Channel channel = State.UpdateChannel( message.Parameters[ 1.. ], message.Tags );
+					
+					// Run the channel update event
 					OnChannelUpdate?.Invoke( this, channel );
 
+				// Something else?
+				} else Console.WriteLine( "Unexpected Server Message: '{0}'", message.ToString() );
+
+			// Is this a user message for ourselves?
+			} else if ( message.IsForUser( Shared.MyAccountName! ) ) {
+
+				// Is this a command?
+				if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
+					
+					// Update the channel and user in state
+					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+					User user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
+					OnChannelJoin?.Invoke( this, user, channel, true );
+
+				} else if ( message.Command == InternetRelayChat.Command.Names && message.Parameters != null ) {
+					List<string> userNames = new( message.Parameters[ ( message.Parameters.IndexOf( ':' ) + 1 ).. ].Split( ' ' ) );
+					userNames.Remove( Shared.MyAccountName! );
+					userNames.Remove( Shared.MyAccountName!.ToLower() );
+
+					if ( userNames.Count == 0 ) {
+						Log.Info( "No users are in the channel with us." );
+					} else {
+						Log.Info( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
+					}
+
+				} else if ( message.Command == InternetRelayChat.Command.NamesEnd && message.Parameters != null ) {
+					// Ignore
+
 				} else {
-					Console.WriteLine( "Unexpected Server Message: '{0}'", message.ToString() );
+					Console.WriteLine( "Unexpected Command Message: '{0}'", message.ToString() );
+				}
+
+			// User
+			} else if ( message.User != null ) {
+				if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Parameters != null && message.Tags != null ) {
+					string[] parameters = message.Parameters.Split( ':', 2 );
+
+					// @badge-info=;badges=moderator/1;client-nonce=08aa66b3ddb3914f22718e243edc0c37;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=9eb706b3-b7ea-4229-8d6f-b42f80f5108b;mod=1;returning-chatter=0;room-id=127154290;subscriber=0;tmi-sent-ts=1655820535330;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG :#rawreltv :test
+
+					Channel channel = State.GetOrCreateChannel( parameters[ 0 ].Trim()[ 1.. ] );
+					User user = State.GetOrCreateUser( channel, message.User );
+					Message theMessage = new( channel, user, parameters[ 1 ].Trim() );
+
+					State.UpdateUser( channel, message.Tags );
+
+					OnChatMessage?.Invoke( this, theMessage );
+
+				} else if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
+					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+					User user = State.GetOrCreateUser( channel, message.User );
+					OnChannelJoin?.Invoke( this, user, channel, false );
+
+				} else if ( message.Command == InternetRelayChat.Command.Leave && message.Parameters != null ) {
+					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+					User user = State.GetOrCreateUser( channel, message.User );
+					OnChannelLeave?.Invoke( this, user, channel );
+
+				} else {
+					Console.WriteLine( "Unexpected User Message: '{0}'", message.ToString() );
 				}
 
 			} else {
-
-				// Command
-				if ( message.IsUser( Shared.MyAccountName!, ExpectedHost! ) == true ) {
-					if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
-						User user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
-						OnChannelJoin?.Invoke( this, user, channel, true );
-
-					} else if ( message.Command == InternetRelayChat.Command.Names && message.Parameters != null ) {
-						List<string> userNames = new( message.Parameters[ ( message.Parameters.IndexOf( ':' ) + 1 ).. ].Split( ' ' ) );
-						userNames.Remove( Shared.MyAccountName! );
-						userNames.Remove( Shared.MyAccountName!.ToLower() );
-
-						if ( userNames.Count == 0 ) {
-							Log.Info( "No users are in the channel with us." );
-						} else {
-							Log.Info( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
-						}
-
-					} else if ( message.Command == InternetRelayChat.Command.NamesEnd && message.Parameters != null ) {
-						// Ignore
-
-					} else {
-						Console.WriteLine( "Unexpected Command Message: '{0}'", message.ToString() );
-					}
-
-				// User
-				} else if ( message.User != null ) {
-					if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Parameters != null && message.Tags != null ) {
-						string[] parameters = message.Parameters.Split( ':', 2 );
-
-						// @badge-info=;badges=moderator/1;client-nonce=08aa66b3ddb3914f22718e243edc0c37;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=9eb706b3-b7ea-4229-8d6f-b42f80f5108b;mod=1;returning-chatter=0;room-id=127154290;subscriber=0;tmi-sent-ts=1655820535330;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG :#rawreltv :test
-
-						Channel channel = State.GetOrCreateChannel( parameters[ 0 ].Trim()[ 1.. ] );
-						User user = State.GetOrCreateUser( channel, message.User );
-						Message theMessage = new( channel, user, parameters[ 1 ].Trim() );
-
-						State.UpdateUser( channel, message.Tags );
-
-						OnChatMessage?.Invoke( this, theMessage );
-
-					} else if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
-						User user = State.GetOrCreateUser( channel, message.User );
-						OnChannelJoin?.Invoke( this, user, channel, false );
-
-					} else if ( message.Command == InternetRelayChat.Command.Leave && message.Parameters != null ) {
-						Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
-						User user = State.GetOrCreateUser( channel, message.User );
-						OnChannelLeave?.Invoke( this, user, channel );
-
-					} else {
-						Console.WriteLine( "Unexpected User Message: '{0}'", message.ToString() );
-					}
-
-				} else {
-					Console.WriteLine( "what is a '{0}' ?", message.ToString() );
-				}
+				Console.WriteLine( "what is a '{0}' ?", message.ToString() );
 			}
-
 		}
 
 	}

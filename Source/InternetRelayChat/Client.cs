@@ -160,7 +160,7 @@ namespace TwitchBot.InternetRelayChat {
 			// Create the buffer for receiving data
 			byte[] receivedData = new byte[ receiveBufferSize ];
 
-			// Repeat until we're no longer connected, or cancelled
+			// Repeat until we're no longer connected, or we're cancelled
 			while ( IsConnected() || cancellationToken.IsCancellationRequested ) {
 
 				// Clear the buffer

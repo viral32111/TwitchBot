@@ -100,10 +100,12 @@ namespace TwitchBot.InternetRelayChat {
 		public byte[] GetBytes() => Encoding.UTF8.GetBytes( ToString() );
 
 		// Checks if this message is a "server message" (i.e. not from a user)
-		public bool IsServer( string host ) => Nick == null && User == null && Host == host;
+		public bool IsServer() => Nick == null && User == null && Host != null;
 
 		// Checks if this message is a "user message" (i.e. from a user)
-		public bool IsUser( string user, string host ) => Nick == user || User == user || Host == $"{user}.{host}";
+		public bool IsForUser( string user ) => !IsServer() && ( Nick == user || User == user );
+
+
 
 	}
 }
