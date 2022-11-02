@@ -1,17 +1,15 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
-using TwitchBot.Features;
-using TwitchBot.Twitch.OAuth;
-using TwitchBot.Twitch;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
+using TwitchBot.Features;
+using TwitchBot.Twitch;
+using TwitchBot.Twitch.OAuth;
 
 namespace TwitchBot {
 	public class Program {
@@ -170,7 +168,7 @@ namespace TwitchBot {
 		}
 
 		private static async Task OnOpen( Client client ) {
-			
+
 			if ( Shared.UserAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
 			Log.Info( "Requesting capabilities..." );
@@ -204,7 +202,7 @@ namespace TwitchBot {
 			Log.Info( "User '{0}' joined channel '{1}'.", user.Global.Name, user.Channel.Name );
 
 			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
-			
+
 		}
 
 		private static async Task OnChannelLeave( Client client, User user, Channel channel ) {
@@ -215,7 +213,7 @@ namespace TwitchBot {
 
 		private static async Task OnChatMessage( Client client, Message message ) {
 
-			Log.Info( "User '{0}' in '{1}' said '{2}'.",message.User.Global.Name, message.Channel.Name, message.Content );
+			Log.Info( "User '{0}' in '{1}' said '{2}'.", message.User.Global.Name, message.Channel.Name, message.Content );
 
 			if ( message.Content == "!hello" ) {
 				await message.Channel.Send( client, "Hello World!" );
@@ -236,7 +234,7 @@ namespace TwitchBot {
 				try {
 					Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", message.Channel.Name, channelIdentifier );
 					Streak? streak = await Streak.FetchCurrentStreak( channelIdentifier );
-					
+
 					if ( streak != null ) {
 						int durationDays = streak.GetDuration();
 						int streamCount = streak.GetStreamCount();
@@ -245,16 +243,27 @@ namespace TwitchBot {
 
 						Console.WriteLine( "Duration (Days): {0}, Streams: {1}, Total Hours: {2} ({3}s), Started: {4}", durationDays, streamCount, totalStreamHours, streak.GetStreamDuration(), startedAt );
 						await message.Channel.Send( client, $"During the month of September I will be doing my best to be live everyday! So far I have been live everyday for the last {durationDays} day(s), with a total of {totalStreamHours} hour(s) across {streamCount} stream(s)!" );
-					
+
 					} else {
 						Console.WriteLine( "There is no streak yet :c" );
 						await message.Channel.Send( client, $"During the month of September I will be doing my best to be live everyday!" );
 					}
-				
+
 				} catch ( Exception exception ) {
 					Console.WriteLine( exception.Message );
 					await message.Channel.Send( client, $"Sorry, something went wrong!" );
 				}
+
+				// Something else using new chat command system
+			} else if ( message.Content[ 0 ] == '!' ) {
+				string command = message.Content[ 1.. ];
+
+				if ( ChatCommand.Exists( command ) ) {
+					_ = ChatCommand.Invoke( command, message );
+				} else {
+					Log.Warn( $"Chat command '{command}' is unknown" );
+				}
+
 			}
 
 		}

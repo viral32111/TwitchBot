@@ -53,7 +53,7 @@ namespace TwitchBot {
 
 		// Creates the tables in the database if they do not exist
 		public static async Task SetupTables() {
-			
+
 			// Stream history for streak feature
 			await Query( "CREATE TABLE IF NOT EXISTS StreamHistory ( " +
 				"Identifier INT UNSIGNED PRIMARY KEY, " +

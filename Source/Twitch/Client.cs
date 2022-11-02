@@ -119,7 +119,7 @@ namespace TwitchBot.Twitch {
 					// Is this the Message of The Day?
 					else if ( message.Command == InternetRelayChat.Command.MoTD ) Log.Info( "MoTD: '{0}'", parameters );
 
-				// The message does not have parameters
+					// The message does not have parameters
 				} else {
 
 					// Are we being informed about ourselves?
@@ -157,7 +157,7 @@ namespace TwitchBot.Twitch {
 
 				// Are we being told a user's new state?
 				if ( message.Command == Command.UserState && message.Middle != null && message.Tags != null ) {
-					
+
 					// Update the channel and user in state
 					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.UpdateUser( channel, message.Tags );
@@ -165,24 +165,24 @@ namespace TwitchBot.Twitch {
 					// Run the user update event
 					OnUserUpdate?.Invoke( this, user );
 
-				// Are we being told a channel's new state?
+					// Are we being told a channel's new state?
 				} else if ( message.Command == Command.RoomState && message.Middle != null && message.Tags != null ) {
-					
+
 					// Update the channel in state
 					Channel channel = State.UpdateChannel( message.Middle[ 1.. ], message.Tags );
-					
+
 					// Run the channel update event
 					OnChannelUpdate?.Invoke( this, channel );
 
-				// Something else?
+					// Something else?
 				} else Console.WriteLine( "Unexpected Server Message: '{0}'", message.ToString() );
 
-			// Is this a user message for ourselves?
+				// Is this a user message for ourselves?
 			} else if ( message.IsForUser( Shared.MyAccountName! ) ) {
 
 				// Is this a command?
 				if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-					
+
 					// Update the channel and user in state
 					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
@@ -206,7 +206,7 @@ namespace TwitchBot.Twitch {
 					Console.WriteLine( "Unexpected Command Message: '{0}'", message.ToString() );
 				}
 
-			// User
+				// User
 			} else if ( message.User != null ) {
 				if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Middle != null && message.Parameters != null && message.Tags != null ) {
 
@@ -214,7 +214,7 @@ namespace TwitchBot.Twitch {
 
 					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, message.User );
-					Message theMessage = new( channel, user, message.Parameters );
+					Message theMessage = new( channel, user, message.Parameters, this );
 
 					State.UpdateUser( channel, message.Tags );
 

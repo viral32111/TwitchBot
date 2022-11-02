@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using viral32111.JsonExtensions;
 
@@ -75,7 +73,7 @@ namespace TwitchBot {
 				// Resave the file to save any new properties that might have been added
 				configuration.SaveToFile();
 
-			// Otherwise, create it with default values in the above file path
+				// Otherwise, create it with default values in the above file path
 			} catch ( FileNotFoundException ) {
 				configuration = JsonExtensions.CreateNewFile( configFilePath, defaultConfiguration );
 				Log.Info( "Created default configuration in file: '{0}'.", configFilePath );
@@ -128,7 +126,7 @@ namespace TwitchBot {
 				string? twitchOAuthSecret = configuration.NestedGet( "twitch.oauth.secret" )?.AsValue().ToString();
 				TwitchOAuthSecret = !string.IsNullOrEmpty( twitchOAuthSecret ) ? twitchOAuthSecret : UserSecrets.TwitchOAuthSecret;
 
-			// Fail if any errors happen while attempting to populate the configuration properties
+				// Fail if any errors happen while attempting to populate the configuration properties
 			} catch ( Exception exception ) {
 				Log.Error( exception.Message );
 				Environment.Exit( 1 );
@@ -138,7 +136,7 @@ namespace TwitchBot {
 
 		// Ensures all properties in the second object exist in the first object
 		private static void EnsurePropertiesExist( JsonObject badObject, JsonObject goodObject ) {
-			
+
 			// Loop through a list of all nested properties in the second object
 			foreach ( string propertyPath in goodObject.NestedList() ) {
 

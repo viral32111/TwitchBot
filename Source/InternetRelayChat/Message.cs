@@ -27,17 +27,17 @@ namespace TwitchBot.InternetRelayChat {
 
 			// Loop through the tags, if any
 			if ( tags != null ) foreach ( string entireTag in tags.Split( ';' ) ) {
-				if ( string.IsNullOrWhiteSpace( entireTag ) ) continue;
+					if ( string.IsNullOrWhiteSpace( entireTag ) ) continue;
 
-				// Split the tag up into name and value
-				string[] tag = entireTag.Split( '=', 2 );
+					// Split the tag up into name and value
+					string[] tag = entireTag.Split( '=', 2 );
 
-				// Skip tags without a name
-				if ( string.IsNullOrWhiteSpace( tag[ 0 ] ) ) continue;
+					// Skip tags without a name
+					if ( string.IsNullOrWhiteSpace( tag[ 0 ] ) ) continue;
 
-				// Add the tag to the dictionary
-				Tags.Add( tag[ 0 ], tag[ 1 ] );
-			}
+					// Add the tag to the dictionary
+					Tags.Add( tag[ 0 ], tag[ 1 ] );
+				}
 
 			// Set the remaining component properties
 			Nick = nick;
@@ -101,7 +101,7 @@ namespace TwitchBot.InternetRelayChat {
 			Tags.Count > 0 ? $"@{Tags.Join()} " : string.Empty,
 			Host != null ? ":" + ( Nick != null && User != null ? $"{Nick}!{User}@{Host}" : Host ) + " " : string.Empty,
 			Command == InternetRelayChat.Command.Notice ? Command + " *" : Command, // Why are NOTICE commands always followed by an asterisk
-			SubCommand != null ? $" * {SubCommand}": string.Empty,
+			SubCommand != null ? $" * {SubCommand}" : string.Empty,
 			Middle != null ? $" {Middle}" : string.Empty,
 			Parameters != null ? $" :{Parameters}" : string.Empty // PASS and NICK don't use : before params??
 		);

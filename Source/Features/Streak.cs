@@ -1,9 +1,7 @@
-﻿using Org.BouncyCastle.Utilities.IO;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -30,7 +28,7 @@ namespace TwitchBot.Features {
 
 		// Gets when the streak started (when the earliest stream started)
 		public DateTimeOffset GetStartDate() {
-			return Streams[ ^ 1 ].StartedAt;
+			return Streams[ ^1 ].StartedAt;
 		}
 
 		// Gets the rounded-up duration (in days) of the streak (days elapsed since earliest stream)

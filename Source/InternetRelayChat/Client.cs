@@ -5,7 +5,6 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -115,7 +114,7 @@ namespace TwitchBot.InternetRelayChat {
 		// Waits for the receive data background task to finish, with an optional timeout in milliseconds
 		public async Task WaitAsync( double timeout = -1 ) {
 			if ( receiveTask == null ) throw new Exception( "Receive data background task has not been initialized" );
-			
+
 			await receiveTask.WaitAsync( TimeSpan.FromMilliseconds( timeout ) );
 		}
 
@@ -215,7 +214,7 @@ namespace TwitchBot.InternetRelayChat {
 
 				// Add this message to the list if we are expecting response message(s)
 				if ( responseCompletionSource != null ) responseMessages.Add( message );
-				
+
 				// Otherwise, run the event to further process this message
 				else OnMessage?.Invoke( this, message );
 
