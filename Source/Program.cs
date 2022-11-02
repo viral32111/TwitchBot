@@ -109,8 +109,8 @@ namespace TwitchBot {
 			Log.Info( "My account name is: '{0}' ({1}, {2}).", Shared.MyAccountName, userResponse[ "data" ]?[ 0 ]?[ "id" ]?.ToString(), userResponse[ "data" ]?[ 0 ]?[ "created_at" ]?.ToString() );
 
 			// Register event handlers for the Twitch client
-			client.OnConnect += OnConnect;
 			client.OnSecureCommunication += OnSecureCommunication;
+			client.OnOpen += OnOpen;
 			client.OnReady += OnReady;
 			client.OnChannelJoin += OnChannelJoin;
 			client.OnChannelLeave += OnChannelLeave;
@@ -129,6 +129,9 @@ namespace TwitchBot {
 			// Connect to Twitch chat
 			Log.Info( "Connecting to Twitch chat..." );
 			await client.ConnectAsync( Config.TwitchChatBaseURL );
+
+			// Keep the program running until we disconnect from Twitch chat
+			await client.WaitAsync();
 
 		}
 
@@ -157,8 +160,17 @@ namespace TwitchBot {
 
 		}
 
-		private static async Task OnConnect( Client client ) {
+		private static async Task OnSecureCommunication( InternetRelayChat.Client client, X509Certificate serverCertificate, SslProtocols protocol, CipherAlgorithmType cipherAlgorithm, int cipherStrength ) {
 
+			string protocolName = Shared.SslProtocolNames[ protocol ];
+			string cipherName = Shared.CipherAlgorithmNames[ cipherAlgorithm ];
+
+			Log.Info( $"Started secure communication with '{serverCertificate.Subject}' (verified by '{serverCertificate.Issuer}' until {serverCertificate.GetExpirationDateString()}), using {protocolName} ({cipherName}-{cipherStrength})." );
+
+		}
+
+		private static async Task OnOpen( Client client ) {
+			
 			if ( Shared.UserAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
 
 			Log.Info( "Requesting capabilities..." );
@@ -171,14 +183,6 @@ namespace TwitchBot {
 			Log.Info( "Authenticating..." );
 
 			await client.Authenticate( Shared.MyAccountName!, Shared.UserAccessToken.Access );
-		}
-
-		private static async Task OnSecureCommunication( InternetRelayChat.Client client, X509Certificate serverCertificate, SslProtocols protocol, CipherAlgorithmType cipherAlgorithm, int cipherStrength ) {
-			
-			string protocolName = Shared.SslProtocolNames[ protocol ];
-			string cipherName = Shared.CipherAlgorithmNames[ cipherAlgorithm ];
-
-			Console.WriteLine( $"Started secure communication with '{serverCertificate.Subject}' (verified by '{serverCertificate.Issuer}' until {serverCertificate.GetExpirationDateString()}), using {protocolName} ({cipherName}-{cipherStrength})." );
 
 		}
 

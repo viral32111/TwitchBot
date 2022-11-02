@@ -25,9 +25,9 @@ namespace TwitchBot.Twitch {
 		// Regular expression for matching the "Your Host" command
 		private readonly Regex hostPattern = new( @"^Your host is (?'host'.+)$" );
 
-		// Event that runs after we connect to the server
-		public new delegate Task OnConnectHandler( Client client );
-		public new event OnConnectHandler? OnConnect;
+		// Event that runs after we have opened a connection to the server
+		public new delegate Task OnOpenHandler( Client client );
+		public new event OnOpenHandler? OnOpen;
 
 		// Event that runs after the client is ready
 		public delegate Task OnReadyHandler( Client client, GlobalUser user );
@@ -56,7 +56,7 @@ namespace TwitchBot.Twitch {
 		// Constructor to register event handlers
 		public Client() {
 			OnMessage += ProcessMessage;
-			base.OnConnect += OnBaseConnect;
+			base.OnOpen += OnBaseOpen;
 		}
 
 		// Request capabilities for this connection
@@ -74,6 +74,8 @@ namespace TwitchBot.Twitch {
 			// Fail if the desired capabilities do not match the granted capabilities
 			if ( !desiredCapabilities.SequenceEqual( grantedCapabilities ) ) throw new Exception( "Not all desired capabilities were granted" );
 
+			//Console.WriteLine( "GRANTED CAPABILITIES: {0}", string.Join( ", ", grantedCapabilities ) ); // DEBUGGING
+
 		}
 
 		// Authenticate using OAuth credentials
@@ -83,7 +85,7 @@ namespace TwitchBot.Twitch {
 			await SendAsync( InternetRelayChat.Command.Password, $"oauth:{accessToken}" );
 
 			// Send the account name as the username, and wait for response message(s)
-			InternetRelayChat.Message[]? authenticationResponseMessages = await SendExpectResponseAsync( InternetRelayChat.Command.Username, accountName );
+			InternetRelayChat.Message[]? authenticationResponseMessages = await SendExpectResponseAsync( InternetRelayChat.Command.Nickname, accountName );
 
 			// Loop through each message as the Twitch authentication reply contains multiple messages
 			foreach ( InternetRelayChat.Message message in authenticationResponseMessages ) {
@@ -137,35 +139,37 @@ namespace TwitchBot.Twitch {
 
 		// Joins a channel's chat
 		public async Task JoinChannel( string channelName ) { // TODO: Use channel identifier instead?
-			await SendAsync( InternetRelayChat.Command.Join, channelName.ToLower() );
+			await SendAsync( InternetRelayChat.Command.Join, middle: $"#{channelName.ToLower()}" );
 
 			// TODO: Check ':peeksabot!peeksabot@peeksabot.tmi.twitch.tv JOIN #rawreltv' response here & run the channel join event...?
 		}
 
 		// Run the connect event when the IRC client connects to the server
-		private async Task OnBaseConnect( InternetRelayChat.Client _ ) => OnConnect?.Invoke( this );
+		private async Task OnBaseOpen( InternetRelayChat.Client _ ) => OnOpen?.Invoke( this );
 
 		// Processes received messages
 		private async Task ProcessMessage( InternetRelayChat.Client client, InternetRelayChat.Message message ) {
+
+			//Console.WriteLine( "IS SERVER: {0}, IS FOR US: {1}", message.IsServer(), message.IsForUser( Shared.MyAccountName! ) ); // DEBUGGING
 
 			// Is this a server message?
 			if ( message.IsServer() ) {
 
 				// Are we being told a user's new state?
-				if ( message.Command == Command.UserState && message.Parameters != null && message.Tags != null ) {
+				if ( message.Command == Command.UserState && message.Middle != null && message.Tags != null ) {
 					
 					// Update the channel and user in state
-					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.UpdateUser( channel, message.Tags );
 
 					// Run the user update event
 					OnUserUpdate?.Invoke( this, user );
 
 				// Are we being told a channel's new state?
-				} else if ( message.Command == Command.RoomState && message.Parameters != null && message.Tags != null ) {
+				} else if ( message.Command == Command.RoomState && message.Middle != null && message.Tags != null ) {
 					
 					// Update the channel in state
-					Channel channel = State.UpdateChannel( message.Parameters[ 1.. ], message.Tags );
+					Channel channel = State.UpdateChannel( message.Middle[ 1.. ], message.Tags );
 					
 					// Run the channel update event
 					OnChannelUpdate?.Invoke( this, channel );
@@ -204,26 +208,25 @@ namespace TwitchBot.Twitch {
 
 			// User
 			} else if ( message.User != null ) {
-				if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Parameters != null && message.Tags != null ) {
-					string[] parameters = message.Parameters.Split( ':', 2 );
+				if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Middle != null && message.Parameters != null && message.Tags != null ) {
 
-					// @badge-info=;badges=moderator/1;client-nonce=08aa66b3ddb3914f22718e243edc0c37;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=9eb706b3-b7ea-4229-8d6f-b42f80f5108b;mod=1;returning-chatter=0;room-id=127154290;subscriber=0;tmi-sent-ts=1655820535330;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG :#rawreltv :test
+					// @badge-info=;badges=moderator/1;client-nonce=640a320bc852e4bc9034e93feac64b38;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=f93c6fec-e157-4224-8035-1b6f148a1ff8;mod=1;returning-chatter=0;room-id=127154290;subscriber=0;tmi-sent-ts=1667397167274;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG #rawreltv :aa
 
-					Channel channel = State.GetOrCreateChannel( parameters[ 0 ].Trim()[ 1.. ] );
+					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, message.User );
-					Message theMessage = new( channel, user, parameters[ 1 ].Trim() );
+					Message theMessage = new( channel, user, message.Parameters );
 
 					State.UpdateUser( channel, message.Tags );
 
 					OnChatMessage?.Invoke( this, theMessage );
 
-				} else if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+				} else if ( message.Command == InternetRelayChat.Command.Join && message.Middle != null ) {
+					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, message.User );
 					OnChannelJoin?.Invoke( this, user, channel, false );
 
-				} else if ( message.Command == InternetRelayChat.Command.Leave && message.Parameters != null ) {
-					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+				} else if ( message.Command == InternetRelayChat.Command.Leave && message.Middle != null ) {
+					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, message.User );
 					OnChannelLeave?.Invoke( this, user, channel );
 

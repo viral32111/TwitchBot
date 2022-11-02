@@ -5,6 +5,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -60,6 +61,7 @@ namespace TwitchBot.InternetRelayChat {
 
 			// Connect to the server using TCP
 			await base.ConnectAsync( hostname, port );
+			//Console.WriteLine( "TCP CONNECTED" ); // DEBUGGING
 			OnConnect?.Invoke( this );
 
 			// Start secure communication using TLS, throws an AuthenticationException if the server certificate is invalid
@@ -76,13 +78,16 @@ namespace TwitchBot.InternetRelayChat {
 				CertificateRevocationCheckMode = X509RevocationMode.Online,
 				RemoteCertificateValidationCallback = ValidateServerCertificate
 			} );
+			//Console.WriteLine( "SSL STARTED" ); // DEBUGGING
 			OnSecureCommunication?.Invoke( this, secureStream.RemoteCertificate!, secureStream.SslProtocol, secureStream.CipherAlgorithm, secureStream.CipherStrength );
 
 			// Start receiving data in the background
 			receiveTaskCancellationSource = new();
 			receiveTask = ReceiveAsync( receiveTaskCancellationSource.Token );
+			//Console.WriteLine( "RECEIVING" ); // DEBUGGING
 
 			// We're now ready
+			//Console.WriteLine( "OPEN" ); // DEBUGGING
 			OnOpen?.Invoke( this );
 
 		}
@@ -124,10 +129,16 @@ namespace TwitchBot.InternetRelayChat {
 		}
 
 		// Sends an IRC message to the server
-		public async Task SendAsync( string command, string? parameters = null ) {
+		public async Task SendAsync( string command, string? parameters = null, string? middle = null ) {
 			if ( !IsConnected() ) throw new Exception( "Connection to server has not been established" );
 
-			await secureStream!.WriteAsync( new Message( command, parameters ).GetBytes() );
+			Message message = new( command, middle, parameters );
+
+			/*Console.ForegroundColor = ConsoleColor.Cyan;
+			Console.WriteLine( "SEND: '{0}'", message ); // DEBUGGING
+			Console.ForegroundColor = ConsoleColor.Gray;*/
+
+			await secureStream!.WriteAsync( message.GetBytes() );
 			await secureStream!.FlushAsync();
 		}
 
@@ -169,6 +180,10 @@ namespace TwitchBot.InternetRelayChat {
 				// Receive data into the buffer
 				int receivedBytes = await secureStream!.ReadAsync( receivedData, cancellationToken );
 
+				/*Console.ForegroundColor = ConsoleColor.Cyan;
+				Console.WriteLine( "RECEIVE: {0} '{1}'", receivedBytes, Encoding.UTF8.GetString( receivedData ) ); // DEBUGGING
+				Console.ForegroundColor = ConsoleColor.Gray;*/
+
 				// Parse the received data as IRC messages
 				Message[] messages = Message.Parse( receivedData, receivedBytes );
 
@@ -187,6 +202,10 @@ namespace TwitchBot.InternetRelayChat {
 
 			// Loop through each message
 			foreach ( Message message in messages ) {
+
+				/*Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine( "PROCESS: '{0}'", message ); // DEBUGGING
+				Console.ForegroundColor = ConsoleColor.Gray;*/
 
 				// Respond to keep-alive pings - https://dev.twitch.tv/docs/irc#keepalive-messages
 				if ( message.Command == Command.Ping ) await SendAsync( Command.Pong, message.Parameters );
