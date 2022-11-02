@@ -128,10 +128,10 @@ namespace TwitchBot.InternetRelayChat {
 		}
 
 		// Sends an IRC message to the server
-		public async Task SendAsync( string command, string? parameters = null, string? middle = null ) {
+		public async Task SendAsync( string command, string? parameters = null, string? middle = null, Dictionary<string, string?>? tags = null ) {
 			if ( !IsConnected() ) throw new Exception( "Connection to server has not been established" );
 
-			Message message = new( command, middle, parameters );
+			Message message = new( command, middle, parameters, tags );
 
 			/*Console.ForegroundColor = ConsoleColor.Cyan;
 			Console.WriteLine( "SEND: '{0}'", message ); // DEBUGGING

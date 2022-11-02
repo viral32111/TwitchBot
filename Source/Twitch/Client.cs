@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable CS1998
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -158,8 +160,10 @@ namespace TwitchBot.Twitch {
 				// Are we being told a user's new state?
 				if ( message.Command == Command.UserState && message.Middle != null && message.Tags != null ) {
 
+					if ( !message.Tags.TryGetValue( "room-id", out string? channelIdentifier ) || channelIdentifier == null ) throw new Exception( "Message contains no valid room identifier" );
+
 					// Update the channel and user in state
-					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
+					Channel channel = State.GetOrCreateChannel( int.Parse( channelIdentifier ), message.Middle[ 1.. ], this );
 					User user = State.UpdateUser( channel, message.Tags );
 
 					// Run the user update event
@@ -169,7 +173,7 @@ namespace TwitchBot.Twitch {
 				} else if ( message.Command == Command.RoomState && message.Middle != null && message.Tags != null ) {
 
 					// Update the channel in state
-					Channel channel = State.UpdateChannel( message.Middle[ 1.. ], message.Tags );
+					Channel channel = State.UpdateChannel( message.Middle[ 1.. ], message.Tags, this );
 
 					// Run the channel update event
 					OnChannelUpdate?.Invoke( this, channel );
@@ -183,8 +187,10 @@ namespace TwitchBot.Twitch {
 				// Is this a command?
 				if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
 
+					if ( !message.Tags.TryGetValue( "room-id", out string? channelIdentifier ) || channelIdentifier == null ) throw new Exception( "Message contains no valid room identifier" );
+
 					// Update the channel and user in state
-					Channel channel = State.GetOrCreateChannel( message.Parameters[ 1.. ] );
+					Channel channel = State.GetOrCreateChannel( int.Parse( channelIdentifier ), message.Parameters[ 1.. ], this );
 					User user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
 					OnChannelJoin?.Invoke( this, user, channel, true );
 
@@ -210,25 +216,33 @@ namespace TwitchBot.Twitch {
 			} else if ( message.User != null ) {
 				if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Middle != null && message.Parameters != null && message.Tags != null ) {
 
-					// @badge-info=;badges=moderator/1;client-nonce=640a320bc852e4bc9034e93feac64b38;color=#FF0000;display-name=viral32111_;emotes=;first-msg=0;flags=;id=f93c6fec-e157-4224-8035-1b6f148a1ff8;mod=1;returning-chatter=0;room-id=127154290;subscriber=0;tmi-sent-ts=1667397167274;turbo=0;user-id=675961583;user-type=mod :viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG #rawreltv :aa
+					if ( !message.Tags.TryGetValue( "room-id", out string? channelIdentifier ) || channelIdentifier == null ) throw new Exception( "Message contains no valid room identifier" );
 
-					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
+					Channel channel = State.GetOrCreateChannel( int.Parse( channelIdentifier ), message.Middle[ 1.. ], this );
 					User user = State.GetOrCreateUser( channel, message.User );
-					Message theMessage = new( channel, user, message.Parameters, this );
+					Message theMessage = new( message.Parameters, message.Tags, user, channel );
 
 					State.UpdateUser( channel, message.Tags );
 
 					OnChatMessage?.Invoke( this, theMessage );
 
 				} else if ( message.Command == InternetRelayChat.Command.Join && message.Middle != null ) {
+					
+					// TODO: Get channel by name
+					/*
 					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, message.User );
 					OnChannelJoin?.Invoke( this, user, channel, false );
+					*/
 
 				} else if ( message.Command == InternetRelayChat.Command.Leave && message.Middle != null ) {
+
+					// TODO: Get channel by name
+					/*
 					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
 					User user = State.GetOrCreateUser( channel, message.User );
 					OnChannelLeave?.Invoke( this, user, channel );
+					*/
 
 				} else {
 					Console.WriteLine( "Unexpected User Message: '{0}'", message.ToString() );

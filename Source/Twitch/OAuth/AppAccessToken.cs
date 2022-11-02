@@ -53,6 +53,7 @@ namespace TwitchBot.Twitch.OAuth {
 
 		}
 
+		#pragma warning disable CS1998
 		public async Task Revoke() {
 			throw new NotImplementedException();
 		}

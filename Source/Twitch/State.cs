@@ -86,10 +86,10 @@ namespace TwitchBot.Twitch {
 				return currentUser;
 
 			} else {
-				User newUser = new( globalUser, channel );
-
-				newUser.IsModerator = ( mod == "1" );
-				newUser.IsSubscriber = ( subscriber == "1" );
+				User newUser = new( globalUser, channel ) {
+					IsModerator = ( mod == "1" ),
+					IsSubscriber = ( subscriber == "1" )
+				};
 
 				channel.Users.Add( globalUser.Name.ToLower(), newUser );
 
@@ -97,10 +97,14 @@ namespace TwitchBot.Twitch {
 			}
 		}
 
-		public static Channel UpdateChannel( string channelName, Dictionary<string, string?> tags ) {
-			channelState.TryGetValue( channelName.ToLower(), out Channel? currentChannel );
+		public static Channel UpdateChannel( string channelName, Dictionary<string, string?> tags, Client client ) {
+			channelName = channelName.ToLower();
 
-			tags.TryGetValue( "room-id", out string? roomId );
+			channelState.TryGetValue( channelName, out Channel? currentChannel );
+
+			if ( !tags.TryGetValue( "room-id", out string? roomId ) || roomId == null ) throw new Exception( "Message contains no valid room identifier" );
+			int channelIdentifier = int.Parse( roomId );
+
 			tags.TryGetValue( "emote-only", out string? emoteOnly );
 			tags.TryGetValue( "followers-only", out string? followersOnly );
 			tags.TryGetValue( "subs-only", out string? subsOnly );
@@ -108,9 +112,7 @@ namespace TwitchBot.Twitch {
 			tags.TryGetValue( "rituals", out string? rituals );
 			tags.TryGetValue( "slow", out string? slow );
 
-
 			if ( currentChannel != null ) {
-				if ( !string.IsNullOrEmpty( roomId ) ) currentChannel.Identifier = int.Parse( roomId );
 				if ( !string.IsNullOrEmpty( emoteOnly ) ) currentChannel.IsEmoteOnly = ( emoteOnly == "1" );
 				if ( !string.IsNullOrEmpty( followersOnly ) ) currentChannel.IsFollowersOnly = ( followersOnly == "1" );
 				if ( !string.IsNullOrEmpty( subsOnly ) ) currentChannel.IsSubscribersOnly = ( subsOnly == "1" );
@@ -121,17 +123,16 @@ namespace TwitchBot.Twitch {
 				return currentChannel;
 
 			} else {
-				Channel newChannel = new( channelName );
+				Channel newChannel = new( channelIdentifier, channelName, client ) {
+					IsEmoteOnly = ( emoteOnly == "1" ),
+					IsFollowersOnly = ( followersOnly == "1" ),
+					IsSubscribersOnly = ( subsOnly == "1" ),
+					IsR9K = ( r9k == "1" ),
+					IsRituals = ( rituals == "1" ),
+					IsSlowMode = ( slow == "1" )
+				};
 
-				if ( roomId != null ) newChannel.Identifier = int.Parse( roomId );
-				newChannel.IsEmoteOnly = ( emoteOnly == "1" );
-				newChannel.IsFollowersOnly = ( followersOnly == "1" );
-				newChannel.IsSubscribersOnly = ( subsOnly == "1" );
-				newChannel.IsR9K = ( r9k == "1" );
-				newChannel.IsRituals = ( rituals == "1" );
-				newChannel.IsSlowMode = ( slow == "1" );
-
-				channelState.Add( channelName.ToLower(), newChannel );
+				channelState.Add( channelName, newChannel );
 
 				return newChannel;
 			}
@@ -153,13 +154,15 @@ namespace TwitchBot.Twitch {
 			return newUser;
 		}
 
-		public static Channel GetOrCreateChannel( string channelName ) {
+		public static Channel GetOrCreateChannel( int channelIdentifier, string channelName, Client client ) {
+			channelName = channelName.ToLower();
+
 			foreach ( Channel currentChannel in channelState.Values.ToArray() ) {
-				if ( currentChannel.Name == channelName ) return currentChannel;
+				if ( currentChannel.Identifier == channelIdentifier ) return currentChannel;
 			}
 
-			Channel newChannel = new( channelName );
-			channelState.Add( channelName.ToLower(), newChannel );
+			Channel newChannel = new( channelIdentifier, channelName, client );
+			channelState.Add( channelName, newChannel );
 
 			return newChannel;
 		}

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net;
 using System.Text;
@@ -77,11 +76,6 @@ namespace TwitchBot {
 			NameValueCollection queryString = HttpUtility.ParseQueryString( string.Empty );
 			foreach ( KeyValuePair<string, string> entry in dictionary ) queryString.Add( entry.Key, entry.Value );
 			return queryString.ToString() ?? "";
-		}
-
-		[ Obsolete( "Use string.NullIfEmpty() ?? \"value\" instead" ) ]; 
-		public static string OrIfEmpty( this string value, string fallback ) {
-			return string.IsNullOrEmpty( value ) ? fallback : value;
 		}
 
 	}

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable CS1998
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -7,7 +9,6 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using TwitchBot.Features;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
 
@@ -215,54 +216,13 @@ namespace TwitchBot {
 
 			Log.Info( "User '{0}' in '{1}' said '{2}'.", message.User.Global.Name, message.Channel.Name, message.Content );
 
-			if ( message.Content == "!hello" ) {
-				await message.Channel.Send( client, "Hello World!" );
-			} else if ( message.Content == "!random" ) {
-				Random random = new();
-				await message.Channel.Send( client, $"Your random number is {random.Next( 100 )}" );
-			} else if ( message.Content == "!cake" ) {
-				await message.Channel.Send( client, $"This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
-			/*} else if ( e.Message.Content == "!socials" ) {
-				await e.Message.Channel.Send( twitchClient, "You can find me on Twitter! https://twitter.com/RawrelTV" );*/
-			} else if ( message.Content == "!whoami" ) {
-				await message.Channel.Send( client, $"You are {message.User.Global.Name}, your name color is {message.User.Global.Color}, your account identifier is {message.User.Global.Identifier}, you are {( message.User.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( message.User.IsModerator == true ? "a moderator" : "not a moderator" )}." ); // , you {( tagTurbo == "1" ? "have Turbo" : "do not have Turbo" )}
-
-			// Streaming streak
-			} else if ( message.Content == "!streak" ) {
-				int channelIdentifier = message.Channel.Identifier.GetValueOrDefault( 127154290 ); // Rawreltv, cus .Channel.Identifier is probably broken tbh
-
-				try {
-					Console.WriteLine( "Checking stream history for channel '{0}' ({1})...", message.Channel.Name, channelIdentifier );
-					Streak? streak = await Streak.FetchCurrentStreak( channelIdentifier );
-
-					if ( streak != null ) {
-						int durationDays = streak.GetDuration();
-						int streamCount = streak.GetStreamCount();
-						int totalStreamHours = streak.GetStreamDuration() / 60 / 60;
-						DateTimeOffset startedAt = streak.GetStartDate();
-
-						Console.WriteLine( "Duration (Days): {0}, Streams: {1}, Total Hours: {2} ({3}s), Started: {4}", durationDays, streamCount, totalStreamHours, streak.GetStreamDuration(), startedAt );
-						await message.Channel.Send( client, $"During the month of September I will be doing my best to be live everyday! So far I have been live everyday for the last {durationDays} day(s), with a total of {totalStreamHours} hour(s) across {streamCount} stream(s)!" );
-
-					} else {
-						Console.WriteLine( "There is no streak yet :c" );
-						await message.Channel.Send( client, $"During the month of September I will be doing my best to be live everyday!" );
-					}
-
-				} catch ( Exception exception ) {
-					Console.WriteLine( exception.Message );
-					await message.Channel.Send( client, $"Sorry, something went wrong!" );
-				}
-
-				// Something else using new chat command system
-			} else if ( message.Content[ 0 ] == '!' ) {
+			// Is this a chat command?
+			if ( message.Content[ 0 ] == '!' ) {
 				string command = message.Content[ 1.. ];
 
-				if ( ChatCommand.Exists( command ) ) {
-					_ = ChatCommand.Invoke( command, message );
-				} else {
-					Log.Warn( $"Chat command '{command}' is unknown" );
-				}
+				// Run this chat command if it exists
+				if ( ChatCommand.Exists( command ) ) await ChatCommand.Invoke( command, message );
+				else Log.Warn( $"Chat command '{command}' is unknown" );
 
 			}
 

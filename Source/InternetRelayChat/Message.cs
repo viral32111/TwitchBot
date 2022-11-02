@@ -52,10 +52,11 @@ namespace TwitchBot.InternetRelayChat {
 		}
 
 		// Create a client message, for sending to a server
-		public Message( string command, string? middle = null, string? parameters = null ) {
+		public Message( string command, string? middle = null, string? parameters = null, Dictionary<string, string?>? tags = null ) {
 			Command = command;
 			Middle = middle;
 			Parameters = parameters;
+			Tags = tags ?? new();
 		}
 
 		// Parse a message sent by a server

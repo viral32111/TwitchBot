@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -150,7 +149,7 @@ namespace TwitchBot.Twitch.OAuth {
 				{ "redirect_uri", redirectUri },
 			} ) );
 
-			Stream responseStream = await grantResponse.Content.ReadAsStreamAsync();
+			System.IO.Stream responseStream = await grantResponse.Content.ReadAsStreamAsync();
 			JsonDocument grantDocument = await JsonDocument.ParseAsync( responseStream );
 
 			string? tokenType = grantDocument.RootElement.GetProperty( "token_type" ).GetString();
@@ -188,7 +187,7 @@ namespace TwitchBot.Twitch.OAuth {
 				{ "refresh_token", Refresh },
 			} ) );
 
-			Stream responseStream = await refreshResponse.Content.ReadAsStreamAsync();
+			System.IO.Stream responseStream = await refreshResponse.Content.ReadAsStreamAsync();
 			JsonDocument refreshDocument = await JsonDocument.ParseAsync( responseStream );
 
 			string? tokenType = refreshDocument.RootElement.GetProperty( "token_type" ).GetString();
