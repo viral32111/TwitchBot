@@ -124,13 +124,21 @@ namespace TwitchBot.Features {
 				if ( streamEntry == null ) continue;
 				JsonObject streamData = streamEntry.AsObject();
 
+				// todo: do not parse any of the shit here, do it in stream class instead
+				/*
+				foreach ( JsonNode? node in streamsResponse[ "data" ]!.AsArray() ) {
+					if ( node == null ) continue;
+					streams.Add( new Stream( node.AsObject(), Identifier ) );
+				}
+				*/
+
 				// Get the unique identifier for this stream
 				int streamIdentifier = int.Parse( streamData[ "id" ]!.GetValue<string>() );
 
 				// Parse the date & time of when this stream started
 				DateTimeOffset streamStartedAt = DateTimeOffset.ParseExact( streamData[ "created_at" ]!.GetValue<string>(), "yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture );
 
-				// Parse the stream duration as seconds
+				// Parse the stream duration as 
 				Match durationMatch = streamDurationPattern.Match( streamData[ "duration" ]!.GetValue<string>() );
 				if ( !durationMatch.Success ) throw new Exception( $"Failed to parse stream duration string: '{streamData[ "duration" ]}'" );
 				_ = int.TryParse( durationMatch.Groups[ 1 ].Value, out int durationHours );
@@ -149,11 +157,14 @@ namespace TwitchBot.Features {
 
 	}
 
+	// todo: move to seperate file
 	public class Stream {
 		public readonly int Identifier;
 		public readonly int ChannelIdentifier;
-		public readonly DateTimeOffset StartedAt;
-		public readonly int Duration; // Seconds
+		public readonly DateTimeOffset StartedAt; // TODO: Use DateTime
+		public readonly int Duration; // Seconds, TODO: Use TimeSpan
+
+		// TODO: Store Channel property
 
 		public Stream( int identifier, int channelIdentifier, DateTimeOffset startedAt, int duration ) {
 			Identifier = identifier;
@@ -161,5 +172,22 @@ namespace TwitchBot.Features {
 			StartedAt = startedAt;
 			Duration = duration;
 		}
-	}
-}
+
+		/*
+		public Stream( JsonObject apiData, int channelIdentifier ) {
+			Match durationMatch = DurationPattern.Match( apiData[ "duration" ]!.GetValue<string>() );
+			if ( !durationMatch.Success ) throw new Exception( "Failed to parse stream duration" );
+
+			Identifier = int.Parse( apiData[ "id" ]!.GetValue<string>() );
+			StartedAt = DateTime.ParseExact( apiData[ "created_at" ]!.GetValue<string>(), "yyyy-MM-dd\\THH:mm:ss\\Z", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal );
+			Duration = new(
+				int.Parse( durationMatch.Groups[ 1 ].Value.OrIfEmpty( "0" ) ), // Hours
+				int.Parse( durationMatch.Groups[ 2 ].Value.OrIfEmpty( "0" ) ), // Minutes
+				int.Parse( durationMatch.Groups[ 3 ].Value.OrIfEmpty( "0" ) ) // Seconds
+			);
+
+			Channel = new Channel( channelIdentifier );
+		}
+		*/
+			}
+		}

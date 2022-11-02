@@ -10,12 +10,14 @@ using System.Threading.Tasks;
 namespace TwitchBot.Twitch {
 	public static class API {
 
+		// TODO: HttpMethod.Get, etc?
 		public async static Task<JsonObject> Request( string endpoint, string method = "GET", Dictionary<string, string?>? queryString = null ) {
 
 			if ( method != "GET" ) throw new NotImplementedException( "Methods other than GET are not implemented yet" );
 
 			string targetUrl = $"https://{Config.TwitchAPIBaseURL}/{endpoint}";
 
+			// todo: replace this with Dictionary.ToQueryString() extension so we don't have to rely on Microsoft.AspNetCore
 			if ( queryString != null ) targetUrl = QueryHelpers.AddQueryString( targetUrl, queryString );
 
 			HttpRequestMessage httpRequest = new( HttpMethod.Get, targetUrl.ToString() );
@@ -24,6 +26,7 @@ namespace TwitchBot.Twitch {
 
 			HttpResponseMessage httpResponse = await Shared.httpClient.SendAsync( httpRequest );
 
+			// todo: httpResponse.EnsureSuccessStatusCode() ?
 			if ( httpResponse.StatusCode != HttpStatusCode.OK ) {
 				Log.Warn( "API request: '{0}' '{1}' failed: '{2}'.", method, endpoint, httpResponse.StatusCode );
 
