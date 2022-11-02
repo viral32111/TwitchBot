@@ -29,7 +29,7 @@ namespace TwitchBot.Features {
 			TimeSpan totalDuration = new( 0, 0, cumulativeDurationSeconds );
 			//Console.WriteLine( $"TOTAL (TIMESPAN): {totalDuration}" );
 
-			await message.Reply( $"I am trying to stream 100 hours throughout November, so far I have streamed for {Math.Ceiling( totalDuration.TotalHours )} hours!" );
+			await message.Reply( $"I am trying to stream 100 hours throughout November, so far I have streamed for {Math.Floor( totalDuration.TotalHours )} hours!" );
 		}
 	}
 }
