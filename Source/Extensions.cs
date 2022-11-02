@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace TwitchBot {
 	public static class Extensions {
@@ -67,6 +69,18 @@ namespace TwitchBot {
 			foreach ( KeyValuePair<string, string?> pair in dictionary ) pairs.Add( string.Concat( pair.Key, pairSeparator, pair.Value ) );
 
 			return string.Join( separator, pairs );
+		}
+
+		public static string ToQueryString( this Dictionary<string, string> dictionary ) {
+			NameValueCollection queryString = HttpUtility.ParseQueryString( string.Empty );
+
+			foreach ( KeyValuePair<string, string> pair in dictionary ) queryString.Add( pair.Key, pair.Value );
+
+			return queryString.ToString() ?? "";
+		}
+
+		public static string OrIfEmpty( this string value, string fallback ) {
+			return string.IsNullOrEmpty( value ) ? fallback : value;
 		}
 
 	}
