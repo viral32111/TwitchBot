@@ -1,5 +1,6 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
@@ -65,28 +66,43 @@ namespace TwitchBot {
 		}
 
 		// Queries the database
-		public static async Task Query( string sql ) {
+		public static async Task Query( string sql, Dictionary<string, object>? values = null ) {
 			if ( databaseConnection.State != ConnectionState.Open ) throw new Exception( "Database connection not yet opened" );
 
 			MySqlCommand command = new( sql, databaseConnection );
+			
+			if ( values != null ) foreach ( KeyValuePair<string, object> pair in values ) {
+				command.Parameters.AddWithValue( pair.Key, pair.Value );
+			}
+
 			int rowsAffected = await command.ExecuteNonQueryAsync();
 			//Log.Debug( "Ran database query: '{0}' (rows affected: {1})", command.CommandText, rowsAffected );
 		}
 
-		public static async Task<T?> QueryWithResult<T>( string sql ) {
+		public static async Task<T?> QueryWithResult<T>( string sql, Dictionary<string, object>? values = null ) {
 			if ( databaseConnection.State != ConnectionState.Open ) throw new Exception( "Database connection not yet opened" );
 
 			MySqlCommand command = new( sql, databaseConnection );
+
+			if ( values != null ) foreach ( KeyValuePair<string, object> pair in values ) {
+				command.Parameters.AddWithValue( pair.Key, pair.Value );
+			}
+
 			object? result = await command.ExecuteScalarAsync();
 			//Log.Debug( "Ran database query: '{0}' (result: '{1}')", command.CommandText, result );
 
 			return ( T? ) result;
 		}
 
-		public static async Task<DbDataReader> QueryWithResults( string sql ) {
+		public static async Task<DbDataReader> QueryWithResults( string sql, Dictionary<string, object>? values = null ) {
 			if ( databaseConnection.State != ConnectionState.Open ) throw new Exception( "Database connection not yet opened" );
 
 			MySqlCommand command = new( sql, databaseConnection );
+
+			if ( values != null ) foreach ( KeyValuePair<string, object> pair in values ) {
+				command.Parameters.AddWithValue( pair.Key, pair.Value );
+			}
+
 			DbDataReader reader = await command.ExecuteReaderAsync();
 			//Log.Debug( "Ran database query: '{0}' (records affected: {1}, has rows: {2})", command.CommandText, reader.RecordsAffected, reader.HasRows );
 
