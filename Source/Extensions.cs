@@ -78,5 +78,17 @@ namespace TwitchBot {
 			return queryString.ToString() ?? "";
 		}
 
+		// https://stackoverflow.com/a/4335913
+		public static string TrimEnd( this string target, string trimString ) {
+			if ( string.IsNullOrEmpty( trimString ) ) return target;
+
+			string result = target;
+			while ( result.EndsWith( trimString ) ) {
+				result = result[ ..^trimString.Length ];
+			}
+
+			return result;
+		}
+
 	}
 }

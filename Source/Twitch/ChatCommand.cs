@@ -22,12 +22,12 @@ namespace TwitchBot.Twitch {
 
 			if ( Commands.ContainsKey( chatCommand.Command ) ) throw new Exception( "Chat command is already registered" );
 			Commands.Add( chatCommand.Command, action );
-			//Console.WriteLine( "Registered chat command '{0}'", chatCommand.Command );
+			Log.Debug( "Registered chat command: '{0}'", chatCommand.Command );
 
 			foreach ( string alias in chatCommand.Aliases ) {
 				if ( Commands.ContainsKey( alias ) ) throw new Exception( "Chat command alias is already registered" );
 				Commands.Add( alias, action );
-				//Console.WriteLine( "Registered alias '{0}' for chat command '{1}'", alias, chatCommand.Command );
+				Log.Debug( "Registered alias: '{0}' for chat command: '{1}'", alias, chatCommand.Command );
 			}
 		}
 
