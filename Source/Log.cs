@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace TwitchBot {
 	public static class Log {
@@ -6,6 +7,7 @@ namespace TwitchBot {
 			Console.WriteLine( "[{0:dd-MM-yyyy HH:mm:ss.fff zzz}] [{1}] {2}", DateTime.UtcNow, severity.ToUpper(), string.Format( format, objects ) );
 		}
 
+		[Conditional( "DEBUG" )]
 		public static void Debug( string format, params object?[] objects ) {
 			Write( "DEBUG", format, objects );
 		}
