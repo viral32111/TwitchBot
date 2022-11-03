@@ -1,171 +1,79 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
+
+/* Unknown Tags:
+client-nonce=640a320bc852e4bc9034e93feac64b38
+flags=
+*/
 
 namespace TwitchBot.Twitch {
 	public static class State {
 
-		private static readonly Dictionary<string, GlobalUser> globalUserState = new();
-		private static readonly Dictionary<string, Channel> channelState = new();
+		private static readonly Dictionary<int, Message> Messages = new();
+		private static readonly Dictionary<int, Channel> Channels = new();
+		private static readonly Dictionary<int, GlobalUser> GlobalUsers = new();
+		private static readonly Dictionary<int, ChannelUser> ChannelUsers = new();
 
-		public static GlobalUser UpdateGlobalUser( Dictionary<string, string?> tags ) {
-			GlobalUser? currentUser = null;
+		/*********************************************************************************************/
 
-			// Identifiers
-			tags.TryGetValue( "display-name", out string? displayName );
-			tags.TryGetValue( "user-id", out string? userId ); // Included in GLOBALUSERSTATE
+		// This is insert instead of update because message's have nothing to update, they are purely static
+		public static Message InsertMessage( InternetRelayChat.Message ircMessage, ChannelUser author, Channel channel ) {
+			Message message = new( ircMessage, author, channel );
+			Messages.Add( message.Identifier, message );
+			return message;
+		}
 
-			if ( displayName == null && userId == null ) throw new Exception( "Cannot update user in state without any identifying tags" );
+		public static Message? GetMessage( int identifier ) => Messages[ identifier ];
 
-			// Properties
-			tags.TryGetValue( "user-type", out string? userType );
-			tags.TryGetValue( "color", out string? color );
-			tags.TryGetValue( "badges", out string? badges );
-			tags.TryGetValue( "badge-information", out string? badgeInformation );
-			tags.TryGetValue( "emote-sets", out string? emoteSets );
+		/*********************************************************************************************/
 
-			// Get user in state by name or identifier
-			if ( displayName != null ) {
-				globalUserState.TryGetValue( displayName.ToLower(), out currentUser );
-			} else if ( userId != null ) {
-				int userIdentifier = int.Parse( userId );
+		public static Channel UpdateChannel( InternetRelayChat.Message ircMessage, Client client ) {
+			int identifier = Channel.ExtractIdentifier( ircMessage );
 
-				foreach ( GlobalUser user in globalUserState.Values.ToArray() ) {
-					if ( user.Identifier == userIdentifier ) {
-						currentUser = user;
-						break;
-					}
-				}
-			}
-
-			// User already exists in state
-			if ( currentUser != null ) {
-				if ( !string.IsNullOrEmpty( displayName ) ) currentUser.Name = displayName;
-				if ( userId != null ) currentUser.Identifier = int.Parse( userId );
-
-				if ( !string.IsNullOrEmpty( userType ) ) currentUser.Type = userType;
-				if ( !string.IsNullOrEmpty( color ) ) currentUser.Color = color;
-				if ( !string.IsNullOrEmpty( badges ) ) currentUser.Badges = badges?.Split( ',' );
-				if ( !string.IsNullOrEmpty( badgeInformation ) ) currentUser.BadgeInformation = badgeInformation;
-				if ( !string.IsNullOrEmpty( emoteSets ) ) currentUser.EmoteSets = emoteSets?.Split( ',' );
-
-				return currentUser;
-
-				// User does not exist in state yet...
+			if ( Channels.TryGetValue( identifier, out Channel? channel ) && channel != null ) {
+				channel.UpdateProperties( ircMessage );
 			} else {
-				if ( string.IsNullOrEmpty( displayName ) ) throw new Exception( "Cannot create new user in state without name" );
-
-				GlobalUser newUser = new( displayName );
-
-				if ( userId != null ) newUser.Identifier = int.Parse( userId );
-
-				newUser.Type = userType;
-				newUser.Color = color;
-				newUser.Badges = badges?.Split( ',' );
-				newUser.BadgeInformation = badgeInformation;
-				newUser.EmoteSets = emoteSets?.Split( ',' );
-
-				globalUserState.Add( displayName.ToLower(), newUser );
-
-				return newUser;
+				channel = new( ircMessage, client );
+				Channels.Add( channel.Identifier, channel );
 			}
+
+			return channel;
 		}
 
-		public static User UpdateUser( Channel channel, Dictionary<string, string?> tags ) {
-			GlobalUser globalUser = UpdateGlobalUser( tags );
+		public static Channel? GetChannel( int identifier ) => Channels[ identifier ];
 
-			channel.Users.TryGetValue( globalUser.Name.ToLower(), out User? currentUser );
+		/*********************************************************************************************/
 
-			tags.TryGetValue( "mod", out string? mod );
-			tags.TryGetValue( "subscriber", out string? subscriber );
+		public static GlobalUser UpdateGlobalUser( InternetRelayChat.Message ircMessage ) {
+			int identifier = GlobalUser.ExtractIdentifier( ircMessage );
 
-			if ( currentUser != null ) {
-				if ( !string.IsNullOrEmpty( mod ) ) currentUser.IsModerator = ( mod == "1" );
-				if ( !string.IsNullOrEmpty( subscriber ) ) currentUser.IsSubscriber = ( subscriber == "1" );
-
-				return currentUser;
-
+			if ( GlobalUsers.TryGetValue( identifier, out GlobalUser? globalUser ) && globalUser != null ) {
+				globalUser.UpdateProperties( ircMessage );
 			} else {
-				User newUser = new( globalUser, channel ) {
-					IsModerator = ( mod == "1" ),
-					IsSubscriber = ( subscriber == "1" )
-				};
-
-				channel.Users.Add( globalUser.Name.ToLower(), newUser );
-
-				return newUser;
+				globalUser = new( ircMessage );
+				GlobalUsers.Add( globalUser.Identifier, globalUser );
 			}
+
+			return globalUser;
 		}
 
-		public static Channel UpdateChannel( string channelName, Dictionary<string, string?> tags, Client client ) {
-			channelName = channelName.ToLower();
+		public static GlobalUser? GetGlobalUser( int identifier ) => GlobalUsers[ identifier ];
 
-			channelState.TryGetValue( channelName, out Channel? currentChannel );
+		/*********************************************************************************************/
 
-			if ( !tags.TryGetValue( "room-id", out string? roomId ) || roomId == null ) throw new Exception( "Message contains no valid room identifier" );
-			int channelIdentifier = int.Parse( roomId );
+		public static ChannelUser UpdateChannelUser( InternetRelayChat.Message ircMessage, Channel channel ) {
+			int identifier = GlobalUser.ExtractIdentifier( ircMessage );
 
-			tags.TryGetValue( "emote-only", out string? emoteOnly );
-			tags.TryGetValue( "followers-only", out string? followersOnly );
-			tags.TryGetValue( "subs-only", out string? subsOnly );
-			tags.TryGetValue( "r9k", out string? r9k );
-			tags.TryGetValue( "rituals", out string? rituals );
-			tags.TryGetValue( "slow", out string? slow );
-
-			if ( currentChannel != null ) {
-				if ( !string.IsNullOrEmpty( emoteOnly ) ) currentChannel.IsEmoteOnly = ( emoteOnly == "1" );
-				if ( !string.IsNullOrEmpty( followersOnly ) ) currentChannel.IsFollowersOnly = ( followersOnly == "1" );
-				if ( !string.IsNullOrEmpty( subsOnly ) ) currentChannel.IsSubscribersOnly = ( subsOnly == "1" );
-				if ( !string.IsNullOrEmpty( r9k ) ) currentChannel.IsR9K = ( r9k == "1" );
-				if ( !string.IsNullOrEmpty( rituals ) ) currentChannel.IsRituals = ( rituals == "1" );
-				if ( !string.IsNullOrEmpty( slow ) ) currentChannel.IsSlowMode = ( slow == "1" );
-
-				return currentChannel;
-
+			if ( ChannelUsers.TryGetValue( identifier, out ChannelUser? channelUser ) && channelUser != null ) {
+				channelUser.UpdateProperties( ircMessage );
 			} else {
-				Channel newChannel = new( channelIdentifier, channelName, client ) {
-					IsEmoteOnly = ( emoteOnly == "1" ),
-					IsFollowersOnly = ( followersOnly == "1" ),
-					IsSubscribersOnly = ( subsOnly == "1" ),
-					IsR9K = ( r9k == "1" ),
-					IsRituals = ( rituals == "1" ),
-					IsSlowMode = ( slow == "1" )
-				};
-
-				channelState.Add( channelName, newChannel );
-
-				return newChannel;
-			}
-		}
-
-		public static User GetOrCreateUser( Channel channel, string userName ) {
-			channel.Users.TryGetValue( userName.ToLower(), out User? existingUser );
-			if ( existingUser != null ) return existingUser;
-
-			globalUserState.TryGetValue( userName.ToLower(), out GlobalUser? globalUser );
-			if ( globalUser == null ) {
-				globalUser = new( userName );
-				globalUserState.Add( userName.ToLower(), globalUser );
+				channelUser = new( ircMessage, channel );
+				ChannelUsers.Add( channelUser.Identifier, channelUser );
 			}
 
-			User newUser = new( globalUser, channel );
-			channel.Users.Add( userName.ToLower(), newUser );
-
-			return newUser;
+			return channelUser;
 		}
 
-		public static Channel GetOrCreateChannel( int channelIdentifier, string channelName, Client client ) {
-			channelName = channelName.ToLower();
-
-			foreach ( Channel currentChannel in channelState.Values.ToArray() ) {
-				if ( currentChannel.Identifier == channelIdentifier ) return currentChannel;
-			}
-
-			Channel newChannel = new( channelIdentifier, channelName, client );
-			channelState.Add( channelName, newChannel );
-
-			return newChannel;
-		}
+		public static ChannelUser? GetChannelUser( int identifier ) => ChannelUsers[ identifier ];
 
 	}
 }
