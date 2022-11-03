@@ -1,48 +1,53 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
-/*
-@badge-info=
-badges=moderator/1
-client-nonce=640a320bc852e4bc9034e93feac64b38
-color=#FF0000
-display-name=viral32111_
-emotes=
-first-msg=0
-flags=
-id=f93c6fec-e157-4224-8035-1b6f148a1ff8
-mod=1
-returning-chatter=0
-room-id=127154290
-subscriber=0
-tmi-sent-ts=1667397167274
-turbo=0;user-id=675961583
-user-type=mod
-
-:viral32111_!viral32111_@viral32111_.tmi.twitch.tv PRIVMSG #rawreltv :aa
+/* Message Tags:
+ id=f93c6fec-e157-4224-8035-1b6f148a1ff8
+ tmi-sent-ts=1667397167274
 */
 
 namespace TwitchBot.Twitch {
 	public class Message {
-		public readonly int Identifier;
+
+		// Static data from IRC message tags
+		public readonly int Identifier; // id
+		public readonly DateTimeOffset SentAt; // tmi-sent-ts
+
+		// From IRC message parameter
 		public readonly string Content;
 
-		public readonly User User;
+		// Other relevant objects
+		public readonly ChannelUser Author;
 		public readonly Channel Channel;
 
-		public Message( string content, Dictionary<string, string?> ircMessageTags, User user, Channel channel ) {
-			if ( !ircMessageTags.TryGetValue( "id", out string? identifier ) || identifier == null ) throw new Exception( "Message does not contain a valid identifier tag" );
+		// Creates a message from an IRC message
+		public Message( InternetRelayChat.Message ircMessage, ChannelUser author, Channel channel ) {
 
-			Identifier = int.Parse( identifier );
-			Content = content;
+			// Set identifier
+			Identifier = ExtractIdentifier( ircMessage );
+			
+			// Extract sent at from unix timestamp
+			if ( !ircMessage.Tags.TryGetValue( "tmi-sent-ts", out string? messageSentTimestamp ) || messageSentTimestamp == null ) throw new Exception( "IRC message does not contain a timestamp for this message" );
+			SentAt = DateTimeOffset.FromUnixTimeMilliseconds( int.Parse( messageSentTimestamp ) );
 
-			User = user;
+			// Set content
+			if ( ircMessage.Parameters == null ) throw new Exception( "IRC message does not contain content for this message" );
+			Content = ircMessage.Parameters;
+
+			// Set relevant objects
+			Author = author;
 			Channel = channel;
+
 		}
 
-		public async Task Reply( string content ) {
-			await Channel.SendMessage( content, replyTo: Identifier );
+		// Extracts the channel identifier from the IRC message tags
+		public static int ExtractIdentifier( InternetRelayChat.Message ircMessage ) {
+			if ( !ircMessage.Tags.TryGetValue( "id", out string? messageIdentifier ) || messageIdentifier == null ) throw new Exception( "IRC message does not contain an identifier tag for this message" );
+			return int.Parse( messageIdentifier );
 		}
+
+		// Sends a reply to this message
+		public async Task Reply( string content ) => await Channel.SendMessage( content, replyTo: this );
+
 	}
 }

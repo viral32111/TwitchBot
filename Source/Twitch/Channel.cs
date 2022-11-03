@@ -4,38 +4,101 @@ using System.Data.Common;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
+/* Channel Tags:
+ room-id=127154290
+ emote-only=0
+ followers-only=-1
+ r9k=0
+ rituals=0
+ slow=10
+ subs-only=0
+*/
+
 namespace TwitchBot.Twitch {
 	public class Channel {
-		public Dictionary<string, User> Users = new();
 
-		public readonly int Identifier;
-		public readonly string Name;
+		// Static data from IRC message tags
+		public readonly int Identifier; // room-id
 
-		public bool? IsEmoteOnly = null;
-		public bool? IsFollowersOnly = null;
-		public bool? IsSubscribersOnly = null;
-		public bool? IsR9K = null;
-		public bool? IsRituals = null;
-		public bool? IsSlowMode = null;
+		// Dynamic data from IRC message tags
+		public bool IsEmoteOnly { get; private set; } // emote-only
+		public int FollowersOnlyRequiredMinutes { get; private set; } // followers-only
+		public bool IsSubscribersOnly { get; private set; } // subs-only
+		public bool RequireUniqueMessages { get; private set; } // r9k
+		public bool IsCelebrating { get; private set; } // rituals
+		public int SlowModeCooldownSeconds { get; private set; } // slow
 
+		// From IRC message parameter
+		public string Name { get; private set; }
+
+		// Other relevant objects
+		//public readonly ChannelUser Broadcaster;
 		private readonly Client Client;
 
-		public Channel( int identifier, string name, Client client ) {
-			Identifier = identifier;
-			Name = name;
+		//public Dictionary<string, User> Users = new();
+
+		// Creates a channel from an IRC message
+		public Channel( InternetRelayChat.Message ircMessage, Client client ) { // User broadcaster, 
+
+			// Set the static data
+			Identifier = ExtractIdentifier( ircMessage );
+
+			// Set the dynamic data
+			UpdateProperties( ircMessage );
+
+			// Set the name, forced to lowercase
+			if ( ircMessage.Parameters == null ) throw new Exception( "IRC message does not contain a name for this channel" );
+			Name = ircMessage.Parameters.ToLower();
+
+			// Set relevant objects
+			//Broadcaster = broadcaster;
 			Client = client;
+
 		}
 
-		// Sends a message to this channel's chat, optionally as a reply
-		public async Task SendMessage( string message, int? replyTo = null ) {
-			if ( replyTo != null ) {
-				await Client.SendAsync( InternetRelayChat.Command.PrivateMessage, middle: $"#{Name}", parameters: message, tags: new() {
-					{ "reply-parent-msg-id", replyTo.ToString() }
-				} );
-			} else {
-				await Client.SendAsync( InternetRelayChat.Command.PrivateMessage, middle: $"#{Name}", parameters: message );
-			}
+		// Extracts the channel identifier from the IRC message tags
+		public static int ExtractIdentifier( InternetRelayChat.Message ircMessage ) {
+			if ( !ircMessage.Tags.TryGetValue( "room-id", out string? channelIdentifier ) || channelIdentifier == null ) throw new Exception( "IRC message does not contain an identifier tag for this channel" );
+			return int.Parse( channelIdentifier );
 		}
+
+		// Updates the dynamic data from the IRC message tags
+		public void UpdateProperties( InternetRelayChat.Message ircMessage ) {
+
+			// Extract emote only mode as a boolean
+			if ( !ircMessage.Tags.TryGetValue( "emote-only", out string? isEmoteOnly ) || isEmoteOnly == null ) throw new Exception( "IRC message does not contain an emote only tag for this channel" );
+			IsEmoteOnly = bool.Parse( isEmoteOnly );
+
+			// Extract followers only mode as an integer, forced to be zero or greater (zero means disabled)
+			if ( !ircMessage.Tags.TryGetValue( "followers-only", out string? followersOnlyMinutes ) || followersOnlyMinutes == null ) throw new Exception( "IRC message does not contain a followers only tag for this channel" );
+			FollowersOnlyRequiredMinutes = Math.Max( int.Parse( followersOnlyMinutes ), 0 );
+
+			// Extract subscribers only mode as a boolean
+			if ( !ircMessage.Tags.TryGetValue( "subs-only", out string? isSubscribersOnly ) || isSubscribersOnly == null ) throw new Exception( "IRC message does not contain a subscribers only tag for this channel" );
+			IsSubscribersOnly = bool.Parse( isSubscribersOnly );
+
+			// Extract require unique messages only mode as a boolean
+			if ( !ircMessage.Tags.TryGetValue( "r9k", out string? requireUniqueMessages ) || requireUniqueMessages == null ) throw new Exception( "IRC message does not contain an r9k tag for this channel" );
+			RequireUniqueMessages = bool.Parse( requireUniqueMessages );
+
+			// Extract celebration in-progress as a boolean
+			if ( !ircMessage.Tags.TryGetValue( "rituals", out string? isCelebrating ) || isCelebrating == null ) throw new Exception( "IRC message does not contain a rituals tag for this channel" );
+			IsCelebrating = bool.Parse( isCelebrating );
+
+			// Extract slow mode cooldown as an integer, forced to be zero or greater (zero means disabled)
+			if ( !ircMessage.Tags.TryGetValue( "slow", out string? slowModeCooldownSeconds ) || slowModeCooldownSeconds == null ) throw new Exception( "IRC message does not contain a slow mode tag for this channel" );
+			SlowModeCooldownSeconds = Math.Max( int.Parse( slowModeCooldownSeconds ), 0 );
+
+		}
+
+		// Sends a chat message, can be as a reply to another message
+		public async Task SendMessage( string message, Message? replyTo = null ) => await Client.SendAsync( InternetRelayChat.Command.PrivateMessage,
+			middle: $"#{Name}",
+			parameters: message,
+			tags: replyTo != null ? new() {
+				{ "reply-parent-msg-id", replyTo.Identifier.ToString() }
+			} : null
+		);
 
 		// Fetches a list of streams for this channel
 		public async Task<Stream[]> FetchStreams( int limit = 100 ) {
@@ -44,7 +107,10 @@ namespace TwitchBot.Twitch {
 			await UpdateStreamsInDatabase();
 
 			// Fetch streams from the database
-			DbDataReader reader = await Database.QueryWithResults( $"SELECT Identifier, UNIX_TIMESTAMP( Start ) AS StartedAt, Duration FROM StreamHistory WHERE Channel = {Identifier} ORDER BY Start DESC LIMIT {limit};" );
+			DbDataReader reader = await Database.QueryWithResults( $"SELECT Identifier, UNIX_TIMESTAMP( Start ) AS StartedAt, Duration FROM StreamHistory WHERE Channel = ?identifier ORDER BY Start DESC LIMIT ?limit;", new() {
+				{ "?identifier", Identifier },
+				{ "?limit", limit }
+			} );
 
 			// Populate the list of streams with the query results
 			List<Stream> streams = new();
@@ -92,12 +158,18 @@ namespace TwitchBot.Twitch {
 					Stream stream = new( node.AsObject(), this );
 
 					// Add this stream to the database, or update its duration if it already exists
-					await Database.Query( $"INSERT INTO StreamHistory ( Identifier, Channel, Start, Duration ) VALUES ( {stream.Identifier}, {stream.Channel.Identifier}, FROM_UNIXTIME( {stream.StartedAt.ToUnixTimeSeconds()} ), {stream.Duration.TotalSeconds} ) ON DUPLICATE KEY UPDATE Duration = {stream.Duration.TotalSeconds};" );
+					await Database.Query( $"INSERT INTO StreamHistory ( Identifier, Channel, Start, Duration ) VALUES ( ?streamIdentifier, ?channelIdentifier, FROM_UNIXTIME( ?startedAt ), ?duration ) ON DUPLICATE KEY UPDATE Duration = ?duration;", new() {
+						{ "?streamIdentifier", stream.Identifier },
+						{ "?channelIdentifier", stream.Channel.Identifier },
+						{ "?startedAt", stream.StartedAt.ToUnixTimeSeconds() },
+						{ "?duration", stream.Duration.TotalSeconds }
+					} );
 				}
 
 				// Repeat above until we are on the last page, if we are traversing
 			} while ( nextPageCursor != null && traversePages == true );
 
 		}
+
 	}
 }
