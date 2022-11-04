@@ -200,7 +200,7 @@ namespace TwitchBot.InternetRelayChat {
 				Log.Debug( "Processing IRC message: '{0}'", message.ToString() );
 
 				// Respond to keep-alive pings - https://dev.twitch.tv/docs/irc#keepalive-messages
-				if ( message.Command == Command.Ping ) await SendAsync( Command.Pong, parameters: message.Parameters );
+				if ( message.Command == Command.Ping && message.Middle != null ) await SendAsync( Command.Pong, parameters: message.Middle[ 1.. ] ); // TODO: This should be message.Parameters, but the IRC message parsing regex is broken and doesn't catch it
 
 				// Fail if the message originated from an unexpected server
 				else if ( ExpectedHost != null && ( message.Host == null || !message.Host!.EndsWith( ExpectedHost ) ) ) throw new Exception( "Received message from foreign IRC server" );

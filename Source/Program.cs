@@ -110,7 +110,7 @@ namespace TwitchBot {
 			client.OnOpen += OnOpen;
 			client.OnReady += OnReady;
 			client.OnGlobalUserJoinChannel += OnGlobalUserJoinChannel;
-			client.OnChannelLeave += OnChannelLeave;
+			client.OnGlobalUserLeaveChannel += OnGlobalUserLeaveChannel;
 			client.OnChannelChatMessage += OnChannelChatMessage;
 			client.OnChannelUserUpdate += OnChannelUserUpdate;
 			client.OnChannelUpdate += OnChannelUpdate;
@@ -212,10 +212,9 @@ namespace TwitchBot {
 			Log.Info( "Global user {0} joined channel {1}.", globalUser.ToString(), channel.ToString() );
 		}
 
-		private static async Task OnChannelLeave( Client client, GlobalUser user, Channel channel ) {
-
-			Log.Info( "User '{0}' left channel '{1}'.", user.DisplayName, channel.Name );
-
+		// Fires when a global user leaves a channel's chat
+		private static async Task OnGlobalUserLeaveChannel( Client client, GlobalUser globalUser, Channel channel ) {
+			Log.Info( "Global user {0} left channel {1}.", globalUser.ToString(), channel.ToString() );
 		}
 
 		// Fires when a message in a channel's chat is received

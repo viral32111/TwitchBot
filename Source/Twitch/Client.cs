@@ -47,8 +47,8 @@ namespace TwitchBot.Twitch {
 		public event OnGlobalUserJoinChannelHandler? OnGlobalUserJoinChannel;
 
 		// Event that runs after a user leaves a channel
-		public delegate Task OnChannelLeaveHandler( Client client, GlobalUser user, Channel channel );
-		public event OnChannelLeaveHandler? OnChannelLeave;
+		public delegate Task OnGlobalUserLeaveChannelHandler( Client client, GlobalUser user, Channel channel );
+		public event OnGlobalUserLeaveChannelHandler? OnGlobalUserLeaveChannel;
 
 		// Event that runs after a chat message is received
 		public delegate Task OnChannelChatMessageHandler ( Client client, Message message );
@@ -178,8 +178,6 @@ namespace TwitchBot.Twitch {
 					Log.Info( "There are no global users in channel {0}.", channel.ToString() );
 				}
 
-
-
 			// Did someone send a chat message in a channel?
 			} else if ( !ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.PrivateMessage && ircMessage.Middle != null && ircMessage.Parameters != null && ircMessage.Tags.Count > 0 ) {
 				
@@ -192,7 +190,7 @@ namespace TwitchBot.Twitch {
 				OnChannelChatMessage?.Invoke( this, message );
 
 			// Has a user (that isn't us) joined a channel's chat?
-			} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Join && ircMessage.Middle != null && ircMessage.Parameters != null ) {
+			} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Join && ircMessage.Middle != null ) {
 				
 				// Find the channel in state
 				Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
@@ -205,47 +203,24 @@ namespace TwitchBot.Twitch {
 				// Fire the user join channel event
 				OnGlobalUserJoinChannel?.Invoke( this, globalUser, channel, false );
 
+			// Has a user left a channel's chat?
+			} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Leave && ircMessage.Middle != null ) {
+
+				// Find the channel in state
+				Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
+				if ( channel == null ) throw new Exception( "Received user leave for an unknown channel" );
+
+				// Find the global user in state, or create using the API if they don't exist
+				GlobalUser? globalUser = State.FindGlobalUserByName( ircMessage.User );
+				globalUser ??= await GlobalUser.FetchFromAPI( ircMessage.User );
+
+				// Fire the user leave channel event
+				OnGlobalUserLeaveChannel?.Invoke( this, globalUser, channel );
+
 			// We don't know what to do with this message
 			} else {
 				Log.Warn( "Ignored IRC message: '{0}'", ircMessage.ToString() );
 			}
-
-
-
-
-			// User
-			/*} else if ( message.User != null ) {
-				
-
-				} else if ( message.Command == InternetRelayChat.Command.Join && message.Middle != null ) {
-
-			// TODO: Get channel by name
-			/*
-			Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
-			User user = State.GetOrCreateUser( channel, message.User );
-			OnChannelJoin?.Invoke( this, user, channel, false );
-			*/
-
-			/*} else if ( message.Command == InternetRelayChat.Command.Leave && message.Middle != null ) {
-
-					// TODO: Get channel by name
-					/*
-					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
-					User user = State.GetOrCreateUser( channel, message.User );
-					OnChannelLeave?.Invoke( this, user, channel );
-					*/
-
-			/*} else {
-				Log.Warn( "Unexpected User Message: '{0}'", message.ToString() );
-			}
-
-		} else {
-			Log.Warn( "what is a '{0}' ?", message.ToString() );
-		}
-		*/
-
-
-
 
 		}
 
