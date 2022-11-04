@@ -57,7 +57,7 @@ namespace TwitchBot {
 
 			// Download the Cloudflare Tunnel client
 			if ( !Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) ) {
-				Log.Info( "Cloudflare Tunnel client does not exist or is corrupt, downloading version {0}...", Config.CloudflareTunnelVersion );
+				Log.Warn( "Cloudflare Tunnel client does not exist or is corrupt, downloading version {0}...", Config.CloudflareTunnelVersion );
 				await Cloudflare.DownloadClient( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum );
 				Log.Info( "Cloudflare Tunnel client downloaded to: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			} else {
@@ -84,7 +84,7 @@ namespace TwitchBot {
 				// If the token is no longer valid, then refresh & save it
 				if ( !await Shared.UserAccessToken.Validate() ) {
 
-					Log.Info( "The user access token is no longer valid, refreshing it..." );
+					Log.Warn( "The user access token is no longer valid, refreshing it..." );
 					await Shared.UserAccessToken.DoRefresh();
 
 					Log.Info( "Saving the refreshed user access token..." );
@@ -95,17 +95,16 @@ namespace TwitchBot {
 				}
 
 			} catch ( FileNotFoundException ) {
-				Log.Info( "User access token file does not exist, requesting fresh token..." );
+				Log.Warn( "User access token file does not exist, requesting fresh token..." );
 				Shared.UserAccessToken = await UserAccessToken.RequestAuthorization( Config.TwitchOAuthRedirectURL, Config.TwitchOAuthScopes );
 				Shared.UserAccessToken.Save( Shared.UserAccessTokenFilePath );
 			}
 
-			// Fetch this account's name
-			JsonObject userResponse = await API.Request( "users" );
-			string? accountName = userResponse[ "data" ]?[ 0 ]?[ "display_name" ]?.ToString();
-			if ( string.IsNullOrEmpty( accountName ) ) throw new Exception( "Failed to fetch account name." );
-			Shared.MyAccountName = accountName;
-			Log.Info( "My account name is: '{0}' ({1}, {2}).", Shared.MyAccountName, userResponse[ "data" ]?[ 0 ]?[ "id" ]?.ToString(), userResponse[ "data" ]?[ 0 ]?[ "created_at" ]?.ToString() );
+			// Fetch this account's information
+			JsonObject usersResponse = await API.Request( "users" );
+			client.User = State.InsertGlobalUser( new( usersResponse[ "data" ]![ 0 ]!.AsObject() ) );
+			Log.Info( "I am '{0}' ({1}).", client.User.DisplayName, client.User.Identifier );
+			Shared.MyAccountName = client.User.DisplayName; // DEPRECATED ASS SHIT
 
 			// Register event handlers for the Twitch client
 			client.OnSecureCommunication += OnSecureCommunication;
@@ -114,7 +113,7 @@ namespace TwitchBot {
 			client.OnChannelJoin += OnChannelJoin;
 			client.OnChannelLeave += OnChannelLeave;
 			client.OnChatMessage += OnChatMessage;
-			client.OnUserUpdate += OnUserUpdate;
+			client.OnChannelUserUpdate += OnChannelUserUpdate;
 			client.OnChannelUpdate += OnChannelUpdate;
 			Log.Info( "Registered Twitch client event handlers." );
 
@@ -164,14 +163,16 @@ namespace TwitchBot {
 			string protocolName = Shared.SslProtocolNames[ protocol ];
 			string cipherName = Shared.CipherAlgorithmNames[ cipherAlgorithm ];
 
-			Log.Info( $"Started secure communication with '{serverCertificate.Subject}' (verified by '{serverCertificate.Issuer}' until {serverCertificate.GetExpirationDateString()}), using {protocolName} ({cipherName}-{cipherStrength})." );
+			Log.Debug( $"Established secure communication with '{serverCertificate.Subject}' (verified by '{serverCertificate.Issuer}' until {serverCertificate.GetExpirationDateString()}), using {protocolName} ({cipherName}-{cipherStrength})." );
 
 		}
 
+		// Fires after the underlying connection is ready (i.e. TLS established & receiving data)
 		private static async Task OnOpen( Client client ) {
 
-			if ( Shared.UserAccessToken == null ) throw new Exception( "Connect event ran without previously fetching user access token" );
+			if ( Shared.UserAccessToken == null ) throw new Exception( "Open event ran without previously fetching user access token" );
 
+			// Request all of Twitch's IRC capabilities
 			Log.Info( "Requesting capabilities..." );
 			await client.RequestCapabilities( new string[] {
 				Capability.Commands,
@@ -179,42 +180,45 @@ namespace TwitchBot {
 				Capability.Tags
 			} );
 
+			// Send our credentials to authenticate
 			Log.Info( "Authenticating..." );
-
-			await client.Authenticate( Shared.MyAccountName!, Shared.UserAccessToken.Access );
-
-		}
-
-		private static async Task OnReady( Client client, GlobalUser user ) {
-
-			Log.Info( "Ready as user '{0}' ({1}).", user.Name, user.Identifier );
-
-			if ( !string.IsNullOrEmpty( Config.TwitchChatPrimaryChannelName ) ) {
-				Log.Info( "Joining channel '{0}'...", Config.TwitchChatPrimaryChannelName );
-				await client.JoinChannel( Config.TwitchChatPrimaryChannelName );
+			if ( await client.Authenticate( client.User!.DisplayName, Shared.UserAccessToken.Access ) ) {
+				Log.Info( "Successfully authenticated." );
 			} else {
-				Log.Warn( "No primary channel configured to join." );
+				Log.Error( "Authentication failed!" );
+				await client.CloseAsync();
 			}
 
 		}
 
-		private static async Task OnChannelJoin( Client client, User user, Channel channel, bool isMe ) {
+		// Fires after authentication is successful & we have been informed about ourselves...
+		private static async Task OnReady( Client client, GlobalUser user ) {
+			Log.Info( "Ready as user '{0}' ({1}).", user.DisplayName, user.Identifier );
 
-			Log.Info( "User '{0}' joined channel '{1}'.", user.Global.Name, user.Channel.Name );
+			// Join the primary channel
+			Log.Info( "Joining primary channel '{0}'...", Config.TwitchChatPrimaryChannelIdentifier );
+			Channel? primaryChannel = await client.JoinChannel( Config.TwitchChatPrimaryChannelIdentifier );
+			if ( primaryChannel != null ) Log.Info( "Joined primary channel '{0}' ({1}).", primaryChannel.Name, primaryChannel.Identifier );
+			else Log.Error( "Failed to join primary channel!" );
+		}
+
+		private static async Task OnChannelJoin( Client client, GlobalUser user, Channel channel, bool isMe ) {
+
+			Log.Info( "User '{0}' joined channel '{1}'.", user.DisplayName, channel.Name );
 
 			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
 
 		}
 
-		private static async Task OnChannelLeave( Client client, User user, Channel channel ) {
+		private static async Task OnChannelLeave( Client client, GlobalUser user, Channel channel ) {
 
-			Log.Info( "User '{0}' left channel '{1}'.", user.Global.Name, user.Channel.Name );
+			Log.Info( "User '{0}' left channel '{1}'.", user.DisplayName, channel.Name );
 
 		}
 
 		private static async Task OnChatMessage( Client client, Message message ) {
 
-			Log.Info( "User '{0}' in '{1}' said '{2}'.", message.User.Global.Name, message.Channel.Name, message.Content );
+			Log.Info( "User '{0}' in '{1}' said '{2}'.", message.Author.DisplayName, message.Channel.Name, message.Content );
 
 			// Is this a chat command?
 			if ( message.Content[ 0 ] == '!' ) {
@@ -228,32 +232,17 @@ namespace TwitchBot {
 
 		}
 
-		private static async Task OnUserUpdate( Client client, User user ) {
-
-			Log.Info( "User '{0}' ({1}) updated.", user.Global.Name, user.Global.Identifier );
-			Log.Info( " Type: '{0}'", user.Global.Type );
-			Log.Info( " Color: '{0}'", user.Global.Color );
-			Log.Info( " Badges: '{0}'", user.Global.Badges != null ? string.Join( ',', user.Global.Badges ) : null );
-			Log.Info( " Badge Information: '{0}'", user.Global.BadgeInformation );
-			Log.Info( " Emote Sets: '{0}'", user.Global.EmoteSets != null ? string.Join( ',', user.Global.EmoteSets ) : null );
-			Log.Info( " Channel: '{0}'", user.Channel.Name );
-			Log.Info( "  Is Moderator: '{0}'", user.IsModerator );
-			Log.Info( "  Is Subscriber: '{0}'", user.IsSubscriber );
-
+		// Fires after a channel user is updated in state...
+		private static async Task OnChannelUserUpdate( Client client, ChannelUser user ) {
+			Log.Info( "Channel user '{0}' ({1}) updated.", user.DisplayName, user.Identifier );
 		}
 
+		// Fires after a channel is updated in state...
 		private static async Task OnChannelUpdate( Client client, Channel channel ) {
-
 			Log.Info( "Channel '{0}' ({1}) updated.", channel.Name, channel.Identifier );
-			Log.Info( " Is Emote Only: '{0}'", channel.IsEmoteOnly );
-			Log.Info( " Is Followers Only: '{0}'", channel.IsFollowersOnly );
-			Log.Info( " Is Subscribers Only: '{0}'", channel.IsSubscribersOnly );
-			Log.Info( " Is R9K: '{0}'", channel.IsR9K );
-			Log.Info( " Is Rituals: '{0}'", channel.IsRituals );
-
 		}
 
-		private static async Task OnError( Client client, string message ) {
+		/*private static async Task OnError( Client client, string message ) {
 
 			Log.Info( "An error has occurred: '{0}'.", message );
 
@@ -276,7 +265,7 @@ namespace TwitchBot {
 			Log.Info( "Exiting..." );
 			Environment.Exit( 1 );
 
-		}
+		}*/
 
 	}
 

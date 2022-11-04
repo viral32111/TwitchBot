@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -13,7 +14,9 @@ namespace TwitchBot {
 
 		public static readonly HttpClient httpClient = new();
 
+		[Obsolete( "Use Twitch.Client.User.DisplayName instead" )]
 		public static string? MyAccountName;
+
 		public static UserAccessToken? UserAccessToken;
 		public static readonly string UserAccessTokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
 

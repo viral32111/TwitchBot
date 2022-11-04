@@ -1,4 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using Google.Protobuf;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Nodes;
 
 /* Unknown Tags:
 client-nonce=640a320bc852e4bc9034e93feac64b38
@@ -15,10 +19,10 @@ namespace TwitchBot.Twitch {
 
 		/*********************************************************************************************/
 
-		// This is insert instead of update because message's have nothing to update, they are purely static
-		public static Message InsertMessage( InternetRelayChat.Message ircMessage, ChannelUser author, Channel channel ) {
-			Message message = new( ircMessage, author, channel );
+		// This only has insert & no update because message's have nothing to update, they are purely static
+		public static Message InsertMessage( Message message ) {
 			Messages.Add( message.Identifier, message );
+			Log.Debug( "Inserted message '{0}' in state.", message.Identifier );
 			return message;
 		}
 
@@ -26,31 +30,50 @@ namespace TwitchBot.Twitch {
 
 		/*********************************************************************************************/
 
+		// This is needed for channels created by the channel information & chat settings API responses
+		public static Channel InsertChannel( Channel channel ) {
+			Channels.Add( channel.Identifier, channel );
+			Log.Debug( "Inserted channel '{0}' in state.", channel.Identifier );
+			return channel;
+		}
+
 		public static Channel UpdateChannel( InternetRelayChat.Message ircMessage, Client client ) {
 			int identifier = Channel.ExtractIdentifier( ircMessage );
 
 			if ( Channels.TryGetValue( identifier, out Channel? channel ) && channel != null ) {
 				channel.UpdateProperties( ircMessage );
+				Log.Debug( "Updated channel '{0}' in state.", identifier );
 			} else {
 				channel = new( ircMessage, client );
 				Channels.Add( channel.Identifier, channel );
+				Log.Debug( "Created channel '{0}' in state.", channel.Identifier );
 			}
 
 			return channel;
 		}
 
 		public static Channel? GetChannel( int identifier ) => Channels[ identifier ];
+		public static Channel? FindChannelByName( string name ) => Channels.Values.Where( channel => channel.Name == name.ToLower() ).FirstOrDefault();
 
 		/*********************************************************************************************/
+
+		// This is needed for global users created by the users API response
+		public static GlobalUser InsertGlobalUser( GlobalUser globalUser ) {
+			GlobalUsers.Add( globalUser.Identifier, globalUser );
+			Log.Debug( "Inserted global user '{0}' in state.", globalUser.Identifier );
+			return globalUser;
+		}
 
 		public static GlobalUser UpdateGlobalUser( InternetRelayChat.Message ircMessage ) {
 			int identifier = GlobalUser.ExtractIdentifier( ircMessage );
 
 			if ( GlobalUsers.TryGetValue( identifier, out GlobalUser? globalUser ) && globalUser != null ) {
 				globalUser.UpdateProperties( ircMessage );
+				Log.Debug( "Updated global user '{0}' in state.", identifier );
 			} else {
 				globalUser = new( ircMessage );
 				GlobalUsers.Add( globalUser.Identifier, globalUser );
+				Log.Debug( "Created global user '{0}' in state.", globalUser.Identifier );
 			}
 
 			return globalUser;
@@ -65,9 +88,11 @@ namespace TwitchBot.Twitch {
 
 			if ( ChannelUsers.TryGetValue( identifier, out ChannelUser? channelUser ) && channelUser != null ) {
 				channelUser.UpdateProperties( ircMessage );
+				Log.Debug( "Updated channel user '{0}' in state.", identifier );
 			} else {
 				channelUser = new( ircMessage, channel );
 				ChannelUsers.Add( channelUser.Identifier, channelUser );
+				Log.Debug( "Created channel user '{0}' in state.", channelUser.Identifier );
 			}
 
 			return channelUser;

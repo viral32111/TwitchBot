@@ -25,7 +25,7 @@ namespace TwitchBot.InternetRelayChat {
 		private CancellationTokenSource? receiveTaskCancellationSource;
 
 		// Completion source for server responses to sent messages
-		private TaskCompletionSource<Message[]>? responseCompletionSource = null;
+		private TaskCompletionSource<Message>? responseCompletionSource = null;
 
 		// The IRC server hostname that messages are expected to originate from
 		public string? ExpectedHost;
@@ -136,7 +136,7 @@ namespace TwitchBot.InternetRelayChat {
 		}
 
 		// Sends an IRC message to the server, and waits for response message(s)
-		public async Task<Message[]> SendExpectResponseAsync( string command, string? parameters = null ) {
+		public async Task<Message> SendExpectResponseAsync( string command, string? parameters = null, string? middle = null, Dictionary<string, string?>? tags = null ) {
 
 			// Fail if the last completion source was not cleaned up
 			if ( responseCompletionSource != null ) throw new Exception( "Response source was not cleaned up" );
@@ -145,16 +145,16 @@ namespace TwitchBot.InternetRelayChat {
 			responseCompletionSource = new();
 
 			// Send the message
-			await SendAsync( command, parameters );
+			await SendAsync( command, parameters, middle, tags );
 
 			// Wait for the response message(s)
-			Message[] messages = await responseCompletionSource.Task;
+			Message responseMessage = await responseCompletionSource.Task;
 
 			// Cleanup the completion source
 			responseCompletionSource = null;
 
 			// Return the response message(s)
-			return messages;
+			return responseMessage;
 
 		}
 
@@ -187,29 +187,23 @@ namespace TwitchBot.InternetRelayChat {
 		// Processes messages sent from the server
 		private async Task ProcessReceivedMessages( Message[] messages ) {
 
-			// Create a list for messages that are responses
-			List<Message> responseMessages = new();
-
 			// Loop through each message
 			foreach ( Message message in messages ) {
 				Log.Debug( "Processing IRC message: '{0}'", message.ToString() );
 
 				// Respond to keep-alive pings - https://dev.twitch.tv/docs/irc#keepalive-messages
-				if ( message.Command == Command.Ping ) await SendAsync( Command.Pong, message.Parameters );
+				if ( message.Command == Command.Ping ) await SendAsync( Command.Pong, parameters: message.Parameters );
 
 				// Fail if the message originated from an unexpected server
-				else if ( ExpectedHost != null && ( message.Host == null || !message.Host!.EndsWith( ExpectedHost ) ) ) throw new Exception( "Received message from foreign server" );
+				else if ( ExpectedHost != null && ( message.Host == null || !message.Host!.EndsWith( ExpectedHost ) ) ) throw new Exception( "Received message from foreign IRC server" );
 
-				// Add this message to the list if we are expecting response message(s)
-				if ( responseCompletionSource != null ) responseMessages.Add( message );
+				// Complete the response completion source if we are expecting a response message
+				if ( responseCompletionSource != null ) responseCompletionSource!.SetResult( message );
 
 				// Otherwise, run the event to further process this message
 				else OnMessage?.Invoke( this, message );
 
 			}
-
-			// Complete the completion source if there are response message(s)
-			if ( responseMessages.Count > 0 ) responseCompletionSource!.SetResult( responseMessages.ToArray() );
 
 		}
 

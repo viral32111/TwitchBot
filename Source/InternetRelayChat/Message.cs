@@ -111,10 +111,17 @@ namespace TwitchBot.InternetRelayChat {
 		public byte[] GetBytes() => Encoding.UTF8.GetBytes( ToString() + "\r\n" ); // CRLF required to terminate message as per RFC1459 2.3.1
 
 		// Checks if this message is a "server message" (i.e. not from a user)
+		public bool IsFromSystem() => Nick == null && User == null && Host != null;
+
+		// Checks if this message is about a specific user
+		public bool IsAboutUser( string userName ) => Nick == userName && User == userName && Host != null && Host.StartsWith( userName );
+
+
+		[Obsolete( "Use InternetRelayChat.Message.IsFromSystem() instead" )]
 		public bool IsServer() => Nick == null && User == null && Host != null;
 
-		// Checks if this message is a "user message" (i.e. from a user)
+		[Obsolete( "Use InternetRelayChat.Message.IsAboutUser() instead" )]
 		public bool IsForUser( string user ) => !IsServer() && ( Nick == user || User == user );
-
+		
 	}
 }

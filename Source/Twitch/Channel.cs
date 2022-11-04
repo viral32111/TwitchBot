@@ -17,28 +17,29 @@ using System.Threading.Tasks;
 namespace TwitchBot.Twitch {
 	public class Channel {
 
-		// Static data from IRC message tags
-		public readonly int Identifier; // room-id
+		// Required static data from IRC message tags & API responses
+		public readonly int Identifier;
 
-		// Dynamic data from IRC message tags
-		public bool IsEmoteOnly { get; private set; } // emote-only
-		public int FollowersOnlyRequiredMinutes { get; private set; } // followers-only
-		public bool IsSubscribersOnly { get; private set; } // subs-only
-		public bool RequireUniqueMessages { get; private set; } // r9k
-		public bool IsCelebrating { get; private set; } // rituals
-		public int SlowModeCooldownSeconds { get; private set; } // slow
+		// Required dynamic data from IRC message tags & API responses
+		public bool IsEmoteOnly { get; private set; }
+		public int FollowersOnlyRequiredMinutes { get; private set; }
+		public bool IsSubscribersOnly { get; private set; }
+		public bool RequireUniqueMessages { get; private set; }
+		public int SlowModeCooldownSeconds { get; private set; }
 
-		// From IRC message parameter
-		public string Name { get; private set; }
+		// Optional dynamic data from IRC message tags
+		public bool IsCelebrating { get; private set; } = false;
+
+		// Required static data from IRC message parameter & API responses
+		public readonly string Name;
 
 		// Other relevant objects
-		//public readonly ChannelUser Broadcaster;
 		private readonly Client Client;
 
 		//public Dictionary<string, User> Users = new();
 
 		// Creates a channel from an IRC message
-		public Channel( InternetRelayChat.Message ircMessage, Client client ) { // User broadcaster, 
+		public Channel( InternetRelayChat.Message ircMessage, Client client ) {
 
 			// Set the static data
 			Identifier = ExtractIdentifier( ircMessage );
@@ -47,11 +48,29 @@ namespace TwitchBot.Twitch {
 			UpdateProperties( ircMessage );
 
 			// Set the name, forced to lowercase
-			if ( ircMessage.Parameters == null ) throw new Exception( "IRC message does not contain a name for this channel" );
-			Name = ircMessage.Parameters.ToLower();
+			if ( string.IsNullOrWhiteSpace( ircMessage.Middle ) ) throw new Exception( "IRC message does not contain a name for this channel" );
+			Name = ircMessage.Middle[ 1.. ].ToLower(); // Substring needed because channel name begins with hashtag
 
 			// Set relevant objects
-			//Broadcaster = broadcaster;
+			Client = client;
+
+		}
+
+		// Creates a channel from a channel information & chat settings API response
+		public Channel( JsonObject channelInformation, JsonObject chatSettings, Client client ) {
+			
+			// Set the static data
+			Identifier = int.Parse( channelInformation[ "broadcaster_id" ]!.GetValue<string>() );
+			Name = channelInformation[ "broadcaster_login" ]!.GetValue<string>(); // No need to force lowercase since this is always lowercase
+
+			// Set the dynamic data
+			IsEmoteOnly = chatSettings[ "emote_mode" ]!.GetValue<bool>();
+			FollowersOnlyRequiredMinutes = chatSettings[ "follower_mode" ]!.GetValue<bool>() ? chatSettings[ "follower_mode_duration" ]!.GetValue<int>() : 0;
+			IsSubscribersOnly = chatSettings[ "subscriber_mode" ]!.GetValue<bool>();
+			RequireUniqueMessages = chatSettings[ "unique_chat_mode" ]!.GetValue<bool>();
+			SlowModeCooldownSeconds = chatSettings[ "slow_mode" ]!.GetValue<bool>() ? chatSettings[ "slow_mode_wait_time" ]!.GetValue<int>() : 0;
+
+			// Set relevant objects
 			Client = client;
 
 		}
@@ -67,7 +86,7 @@ namespace TwitchBot.Twitch {
 
 			// Extract emote only mode as a boolean
 			if ( !ircMessage.Tags.TryGetValue( "emote-only", out string? isEmoteOnly ) || isEmoteOnly == null ) throw new Exception( "IRC message does not contain an emote only tag for this channel" );
-			IsEmoteOnly = bool.Parse( isEmoteOnly );
+			IsEmoteOnly = isEmoteOnly == "1";
 
 			// Extract followers only mode as an integer, forced to be zero or greater (zero means disabled)
 			if ( !ircMessage.Tags.TryGetValue( "followers-only", out string? followersOnlyMinutes ) || followersOnlyMinutes == null ) throw new Exception( "IRC message does not contain a followers only tag for this channel" );
@@ -75,15 +94,14 @@ namespace TwitchBot.Twitch {
 
 			// Extract subscribers only mode as a boolean
 			if ( !ircMessage.Tags.TryGetValue( "subs-only", out string? isSubscribersOnly ) || isSubscribersOnly == null ) throw new Exception( "IRC message does not contain a subscribers only tag for this channel" );
-			IsSubscribersOnly = bool.Parse( isSubscribersOnly );
+			IsSubscribersOnly = isSubscribersOnly == "1";
 
 			// Extract require unique messages only mode as a boolean
 			if ( !ircMessage.Tags.TryGetValue( "r9k", out string? requireUniqueMessages ) || requireUniqueMessages == null ) throw new Exception( "IRC message does not contain an r9k tag for this channel" );
-			RequireUniqueMessages = bool.Parse( requireUniqueMessages );
+			RequireUniqueMessages = requireUniqueMessages == "1";
 
 			// Extract celebration in-progress as a boolean
-			if ( !ircMessage.Tags.TryGetValue( "rituals", out string? isCelebrating ) || isCelebrating == null ) throw new Exception( "IRC message does not contain a rituals tag for this channel" );
-			IsCelebrating = bool.Parse( isCelebrating );
+			if ( ircMessage.Tags.TryGetValue( "rituals", out string? isCelebrating ) && isCelebrating == null ) IsCelebrating = isCelebrating == "1";
 
 			// Extract slow mode cooldown as an integer, forced to be zero or greater (zero means disabled)
 			if ( !ircMessage.Tags.TryGetValue( "slow", out string? slowModeCooldownSeconds ) || slowModeCooldownSeconds == null ) throw new Exception( "IRC message does not contain a slow mode tag for this channel" );
