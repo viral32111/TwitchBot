@@ -41,7 +41,7 @@ namespace TwitchBot.Features {
 		public static async Task StreakProgressCommand( Message message ) {
 
 			// Fetch a list of this channel's streams
-			Stream[] streams = await message.Channel.FetchStreams();
+			Stream[] streams = await message.Author.Channel.FetchStreams();
 
 			// Will hold the streams in the streak & when the previous stream finished
 			List<Stream> streamsInStreak = new();

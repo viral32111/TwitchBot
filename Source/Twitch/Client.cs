@@ -43,16 +43,16 @@ namespace TwitchBot.Twitch {
 		public event OnReadyHandler? OnReady;
 
 		// Event that runs after a user joins a channel
-		public delegate Task OnChannelJoinHandler( Client client, GlobalUser user, Channel channel, bool isMe );
-		public event OnChannelJoinHandler? OnChannelJoin;
+		public delegate Task OnGlobalUserJoinChannelHandler( Client client, GlobalUser user, Channel channel, bool isMe );
+		public event OnGlobalUserJoinChannelHandler? OnGlobalUserJoinChannel;
 
 		// Event that runs after a user leaves a channel
 		public delegate Task OnChannelLeaveHandler( Client client, GlobalUser user, Channel channel );
 		public event OnChannelLeaveHandler? OnChannelLeave;
 
 		// Event that runs after a chat message is received
-		public delegate Task OnChatMessageHandler( Client client, Message message );
-		public event OnChatMessageHandler? OnChatMessage;
+		public delegate Task OnChannelChatMessageHandler ( Client client, Message message );
+		public event OnChannelChatMessageHandler? OnChannelChatMessage;
 
 		// Event that runs after a user is updated in a channel
 		public delegate Task OnChannelUserUpdateHandler( Client client, ChannelUser user );
@@ -98,21 +98,7 @@ namespace TwitchBot.Twitch {
 		}
 
 		// Joins a channel's chat
-		public async Task<Channel?> JoinChannel( int channelIdentifier ) {
-
-			// Fetch information about this channel from the Twitch API
-			JsonObject channelInfoResponse = await API.Request( "channels", queryParameters: new() {
-				{ "broadcaster_id", channelIdentifier.ToString() }
-			} );
-
-			// Fetch chat settings for this channel from the Twitch API
-			JsonObject chatSettingsResponse = await API.Request( "chat/settings", queryParameters: new() {
-				{ "broadcaster_id", channelIdentifier.ToString() },
-				{ "moderator_id", User!.Identifier.ToString() },
-			} );
-
-			// Use the above API responses to create the channel in state for the first time
-			Channel channel = State.InsertChannel( new( channelInfoResponse[ "data" ]![ 0 ]!.AsObject(), chatSettingsResponse[ "data" ]![ 0 ]!.AsObject(), this ) );
+		public async Task<bool> JoinChannel( Channel channel ) {
 
 			// IRC channels are prefixed with a hashtag
 			string channelName = $"#{channel.Name}";
@@ -120,11 +106,14 @@ namespace TwitchBot.Twitch {
 			// Request to join this channel & wait for a response
 			InternetRelayChat.Message responseMessage = await SendExpectResponseAsync( InternetRelayChat.Command.Join, middle: channelName );
 
-			// Checks if this message is for us, is about a join, and is for the channel we wanted to join
-			if ( responseMessage.IsAboutUser( User!.DisplayName ) && responseMessage.Command == InternetRelayChat.Command.Join && responseMessage.Middle == channelName ) return channel;
-
-			// Default to returning no channel
-			return null;
+			// Fire the channel join event if this message is for us, is about a join, and is for the channel we wanted to join
+			if ( responseMessage.IsAboutUser( User!.LoginName ) && responseMessage.Command == InternetRelayChat.Command.Join && responseMessage.Middle == channelName ) {
+				// NOTE: Don't need to update global user or channel state here because this IRC message doesn't contain anything useful
+				OnGlobalUserJoinChannel?.Invoke( this, User!, channel, true );
+				return true;
+			} else {
+				return false;
+			}
 
 		}
 
@@ -162,7 +151,59 @@ namespace TwitchBot.Twitch {
 				Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
 				if ( channel == null ) throw new Exception( "Cannot update channel user because the channel is unknown" );
 				
-				//OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( ircMessage, channel ) );
+				OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( ircMessage, channel ) );
+
+			// Are we being informed about the users in a channel we just joined?
+			} else if ( ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.Names && ircMessage.Middle != null && ircMessage.Parameters != null ) {
+				
+				// Find the channel in state
+				Channel? channel = State.FindChannelByName( ircMessage.Middle[ ( ircMessage.Middle.LastIndexOf( '#' ) + 1 ).. ] );
+				if ( channel == null ) throw new Exception( "Received user list for an unknown channel" );
+
+				// Get a list of user names, excluding ourselves
+				string[] userNames = ircMessage.Parameters.Split( ' ' ).Where( userName => userName != User!.LoginName ).ToArray();
+
+				// Find each user in state, or create them using the API if they don't exist
+				List<GlobalUser> globalUsers = new();
+				foreach ( string userName in userNames ) {
+					GlobalUser? globalUser = State.FindGlobalUserByName( userName );
+					globalUser ??= await GlobalUser.FetchFromAPI( userName ); // TODO: The API supports specifying multiple names to reduce request count, we should do that!
+					globalUsers.Add( globalUser );
+				}
+
+				// Display the users
+				if ( globalUsers.Count > 0 ) {
+					Log.Info( "There are {0} global users in channel {1}: {2}", globalUsers.Count, channel.ToString(), string.Join( ", ", globalUsers.Select( globalUser => globalUser.ToString() ).ToArray() ) );
+				} else {
+					Log.Info( "There are no global users in channel {0}.", channel.ToString() );
+				}
+
+
+
+			// Did someone send a chat message in a channel?
+			} else if ( !ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.PrivateMessage && ircMessage.Middle != null && ircMessage.Parameters != null && ircMessage.Tags.Count > 0 ) {
+				
+				// Update state for channel, channel user & message
+				Channel channel = State.UpdateChannel( ircMessage, this );
+				ChannelUser channelUser = State.UpdateChannelUser( ircMessage, channel );
+				Message message = State.InsertMessage( new( ircMessage, channelUser ) );
+
+				// Fire the chat message event
+				OnChannelChatMessage?.Invoke( this, message );
+
+			// Has a user (that isn't us) joined a channel's chat?
+			} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Join && ircMessage.Middle != null && ircMessage.Parameters != null ) {
+				
+				// Find the channel in state
+				Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
+				if ( channel == null ) throw new Exception( "Received user join for an unknown channel" );
+
+				// Find the global user in state, or create using the API if they don't exist
+				GlobalUser? globalUser = State.FindGlobalUserByName( ircMessage.User );
+				globalUser ??= await GlobalUser.FetchFromAPI( ircMessage.User );
+
+				// Fire the user join channel event
+				OnGlobalUserJoinChannel?.Invoke( this, globalUser, channel, false );
 
 			// We don't know what to do with this message
 			} else {
@@ -172,120 +213,41 @@ namespace TwitchBot.Twitch {
 
 
 
+			// User
+			/*} else if ( message.User != null ) {
+				
 
+				} else if ( message.Command == InternetRelayChat.Command.Join && message.Middle != null ) {
 
+			// TODO: Get channel by name
+			/*
+			Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
+			User user = State.GetOrCreateUser( channel, message.User );
+			OnChannelJoin?.Invoke( this, user, channel, false );
+			*/
 
+			/*} else if ( message.Command == InternetRelayChat.Command.Leave && message.Middle != null ) {
 
+					// TODO: Get channel by name
+					/*
+					Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
+					User user = State.GetOrCreateUser( channel, message.User );
+					OnChannelLeave?.Invoke( this, user, channel );
+					*/
 
-
-
-
-
-
-
-
-
-
-		// Is this a server message?
-		/*if ( message.IsServer() ) {
-
-			// Are we being told a channel user's new state?
-			if ( message.Command == Command.UserState && message.Middle != null && message.Tags != null ) {
-
-				// Update the channel & user in state
-				//Channel channel = State.UpdateChannel( message, this );
-				//User user = State.UpdateUser( channel, message.Tags );
-
-				// Fire the user update event
-				//OnUserUpdate?.Invoke( this, user );
-
-			// Are we being told a channel's new state?
-			} else if ( message.Command == Command.RoomState && message.Middle != null && message.Tags != null ) {
-
-				// Update the channel in state
-				Channel channel = State.UpdateChannel( message, this );
-
-				// Fire the channel update event
-				OnChannelUpdate?.Invoke( this, channel );
-
-			// Something else?
-			} else Log.Warn( "Unexpected server message: '{0}'", message.ToString() );
-
-			// Is this a user message for ourselves?
-		} /*else if ( message.IsForUser( Shared.MyAccountName! ) ) {
-
-			// Is this us joining a channel?
-			if ( message.Command == InternetRelayChat.Command.Join && message.Parameters != null ) {
-
-				// Get the channel from state
-				int channelIdentifier = Channel.ExtractIdentifier( message );
-				Channel? channel = State.GetChannel( channelIdentifier );
-				if ( channel == null ) 
-
-				// Update the channel and user in state
-
-				GlobalUser user = State.GetOrCreateUser( channel, Shared.MyAccountName! );
-				OnChannelJoin?.Invoke( this, user, channel, true );
-
-			} else if ( message.Command == InternetRelayChat.Command.Names && message.Parameters != null ) {
-				List<string> userNames = new( message.Parameters[ ( message.Parameters.IndexOf( ':' ) + 1 ).. ].Split( ' ' ) );
-				userNames.Remove( Shared.MyAccountName! );
-				userNames.Remove( Shared.MyAccountName!.ToLower() );
-
-				if ( userNames.Count == 0 ) {
-					Log.Info( "No users are in the channel with us." );
-				} else {
-					Log.Info( "Users '{0}' are in the channel with us.", string.Join( ", ", userNames ) );
-				}
-
-			// Ignore
-			} else if ( message.Command == InternetRelayChat.Command.NamesEnd && message.Parameters != null ) {
-
-			} else {
-				Log.Warn( "Unexpected Command Message: '{0}'", message.ToString() );
+			/*} else {
+				Log.Warn( "Unexpected User Message: '{0}'", message.ToString() );
 			}
 
-		// User
-		} else if ( message.User != null ) {
-			if ( message.Command == InternetRelayChat.Command.PrivateMessage && message.Middle != null && message.Parameters != null && message.Tags != null ) {
-
-				if ( !message.Tags.TryGetValue( "room-id", out string? channelIdentifier ) || channelIdentifier == null ) throw new Exception( "Message contains no valid room identifier" );
-
-				Channel channel = State.GetOrCreateChannel( int.Parse( channelIdentifier ), message.Middle[ 1.. ], this );
-				GlobalUser user = State.GetOrCreateUser( channel, message.User );
-				Message theMessage = new( message.Parameters, message.Tags, user, channel );
-
-				State.UpdateUser( channel, message.Tags );
-
-				OnChatMessage?.Invoke( this, theMessage );
-
-			} else if ( message.Command == InternetRelayChat.Command.Join && message.Middle != null ) {
-
-		// TODO: Get channel by name
-		/*
-		Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
-		User user = State.GetOrCreateUser( channel, message.User );
-		OnChannelJoin?.Invoke( this, user, channel, false );
+		} else {
+			Log.Warn( "what is a '{0}' ?", message.ToString() );
+		}
 		*/
 
-		/*} else if ( message.Command == InternetRelayChat.Command.Leave && message.Middle != null ) {
 
-				// TODO: Get channel by name
-				/*
-				Channel channel = State.GetOrCreateChannel( message.Middle[ 1.. ] );
-				User user = State.GetOrCreateUser( channel, message.User );
-				OnChannelLeave?.Invoke( this, user, channel );
-				*/
 
-		/*} else {
-			Log.Warn( "Unexpected User Message: '{0}'", message.ToString() );
+
 		}
-
-	} else {
-		Log.Warn( "what is a '{0}' ?", message.ToString() );
-	}
-	*/
-	}
 
 	}
 }

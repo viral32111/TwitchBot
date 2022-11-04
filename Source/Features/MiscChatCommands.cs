@@ -38,7 +38,7 @@ namespace TwitchBot.Features {
 
 		[ChatCommand( "whoami" )]
 		public static async Task WhoAmICommand( Message message ) {
-			await message.Reply( $"You are {message.Author.DisplayName}, your name color is {message.Author.NameColor}, your account identifier is {message.Author.Identifier}, you are {( message.Author.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( message.Author.IsModerator == true ? "a moderator" : "not a moderator" )}." );
+			await message.Reply( $"You are {message.Author.Global.DisplayName}, your name color is {message.Author.Global.NameColor}, your account identifier is {message.Author.Global.Identifier}, you are {( message.Author.IsSubscriber == true ? "subscribed" : "not subscribed" )}, you are {( message.Author.IsModerator == true ? "a moderator" : "not a moderator" )}." );
 		}
 
 	}

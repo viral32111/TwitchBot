@@ -1,8 +1,6 @@
-﻿using Google.Protobuf;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Nodes;
 
 /* Unknown Tags:
 client-nonce=640a320bc852e4bc9034e93feac64b38
@@ -12,7 +10,7 @@ flags=
 namespace TwitchBot.Twitch {
 	public static class State {
 
-		private static readonly Dictionary<int, Message> Messages = new();
+		private static readonly Dictionary<Guid, Message> Messages = new();
 		private static readonly Dictionary<int, Channel> Channels = new();
 		private static readonly Dictionary<int, GlobalUser> GlobalUsers = new();
 		private static readonly Dictionary<int, ChannelUser> ChannelUsers = new();
@@ -26,7 +24,7 @@ namespace TwitchBot.Twitch {
 			return message;
 		}
 
-		public static Message? GetMessage( int identifier ) => Messages[ identifier ];
+		public static Message? GetMessage( Guid identifier ) => Messages[ identifier ];
 
 		/*********************************************************************************************/
 
@@ -80,19 +78,26 @@ namespace TwitchBot.Twitch {
 		}
 
 		public static GlobalUser? GetGlobalUser( int identifier ) => GlobalUsers[ identifier ];
+		public static GlobalUser? FindGlobalUserByName( string loginName ) => GlobalUsers.Values.Where( globalUser => globalUser.LoginName == loginName ).FirstOrDefault();
 
 		/*********************************************************************************************/
 
 		public static ChannelUser UpdateChannelUser( InternetRelayChat.Message ircMessage, Channel channel ) {
-			int identifier = GlobalUser.ExtractIdentifier( ircMessage );
 
-			if ( ChannelUsers.TryGetValue( identifier, out ChannelUser? channelUser ) && channelUser != null ) {
+			// USERSTATE updates seem to never contain a user-id IRC message tag, so we can't use GlobalUser.ExtractIdentifier()
+			if ( !ircMessage.Tags.TryGetValue( "display-name", out string? displayName ) || string.IsNullOrWhiteSpace( displayName ) ) throw new Exception( "Cannot possibly update a channel user without their display name IRC message tag" );
+			GlobalUser? globalUser = FindGlobalUserByName( displayName.ToLower() );
+			if ( globalUser == null ) globalUser = State.UpdateGlobalUser( ircMessage ); // for PRIVMSG
+			Log.Debug( "Found global user '{0}' in state.", globalUser.Identifier );
+
+			// TODO: This doesn't even get the user for a specific channel, so our channel users are glorified global users right now...
+			if ( ChannelUsers.TryGetValue( globalUser.Identifier, out ChannelUser? channelUser ) && channelUser != null ) {
 				channelUser.UpdateProperties( ircMessage );
-				Log.Debug( "Updated channel user '{0}' in state.", identifier );
+				Log.Debug( "Updated channel user '{0}' in state.", globalUser.Identifier );
 			} else {
-				channelUser = new( ircMessage, channel );
-				ChannelUsers.Add( channelUser.Identifier, channelUser );
-				Log.Debug( "Created channel user '{0}' in state.", channelUser.Identifier );
+				channelUser = new( ircMessage, globalUser, channel );
+				ChannelUsers.Add( channelUser.Global.Identifier, channelUser );
+				Log.Debug( "Created channel user '{0}' in state.", channelUser.Global.Identifier );
 			}
 
 			return channelUser;

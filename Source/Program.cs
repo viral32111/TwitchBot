@@ -101,18 +101,17 @@ namespace TwitchBot {
 			}
 
 			// Fetch this account's information
-			JsonObject usersResponse = await API.Request( "users" );
-			client.User = State.InsertGlobalUser( new( usersResponse[ "data" ]![ 0 ]!.AsObject() ) );
-			Log.Info( "I am '{0}' ({1}).", client.User.DisplayName, client.User.Identifier );
+			client.User = await GlobalUser.FetchFromAPI();
+			Log.Info( "I am {0}.", client.User.ToString() );
 			Shared.MyAccountName = client.User.DisplayName; // DEPRECATED ASS SHIT
 
 			// Register event handlers for the Twitch client
 			client.OnSecureCommunication += OnSecureCommunication;
 			client.OnOpen += OnOpen;
 			client.OnReady += OnReady;
-			client.OnChannelJoin += OnChannelJoin;
+			client.OnGlobalUserJoinChannel += OnGlobalUserJoinChannel;
 			client.OnChannelLeave += OnChannelLeave;
-			client.OnChatMessage += OnChatMessage;
+			client.OnChannelChatMessage += OnChannelChatMessage;
 			client.OnChannelUserUpdate += OnChannelUserUpdate;
 			client.OnChannelUpdate += OnChannelUpdate;
 			Log.Info( "Registered Twitch client event handlers." );
@@ -193,21 +192,24 @@ namespace TwitchBot {
 
 		// Fires after authentication is successful & we have been informed about ourselves...
 		private static async Task OnReady( Client client, GlobalUser user ) {
-			Log.Info( "Ready as user '{0}' ({1}).", user.DisplayName, user.Identifier );
+			Log.Info( "Ready as user {0}.", user.ToString() );
+
+			// Fetch the primary channel
+			Channel primaryChannel = await Channel.FetchFromAPI( Config.TwitchChatPrimaryChannelIdentifier, client );
 
 			// Join the primary channel
-			Log.Info( "Joining primary channel '{0}'...", Config.TwitchChatPrimaryChannelIdentifier );
-			Channel? primaryChannel = await client.JoinChannel( Config.TwitchChatPrimaryChannelIdentifier );
-			if ( primaryChannel != null ) Log.Info( "Joined primary channel '{0}' ({1}).", primaryChannel.Name, primaryChannel.Identifier );
-			else Log.Error( "Failed to join primary channel!" );
+			Log.Info( "Joining primary channel {0}...", primaryChannel.ToString() );
+			if ( await client.JoinChannel( primaryChannel ) ) {
+				Log.Info( "Joined primary channel {0}.", primaryChannel.ToString() );
+			} else {
+				Log.Error( "Failed to join primary channel!" );
+			}
 		}
 
-		private static async Task OnChannelJoin( Client client, GlobalUser user, Channel channel, bool isMe ) {
-
-			Log.Info( "User '{0}' joined channel '{1}'.", user.DisplayName, channel.Name );
-
-			//if ( e.IsMe ) await e.User.Channel.Send( twitchClient, "Hello World" );
-
+		// Fires when a global user joins a channel's chat
+		// NOTE: Can be ourselves after calling Client.JoinChannel() or other users on Twitch when they join the stream
+		private static async Task OnGlobalUserJoinChannel( Client client, GlobalUser globalUser, Channel channel, bool isMe ) {
+			Log.Info( "Global user {0} joined channel {1}.", globalUser.ToString(), channel.ToString() );
 		}
 
 		private static async Task OnChannelLeave( Client client, GlobalUser user, Channel channel ) {
@@ -216,30 +218,26 @@ namespace TwitchBot {
 
 		}
 
-		private static async Task OnChatMessage( Client client, Message message ) {
+		// Fires when a message in a channel's chat is received
+		private static async Task OnChannelChatMessage( Client client, Message message ) {
+			Log.Info( "Channel user {0} in channel {1} said {2}.", message.Author.ToString(), message.Author.Channel.ToString(), message.ToString() );
 
-			Log.Info( "User '{0}' in '{1}' said '{2}'.", message.Author.DisplayName, message.Channel.Name, message.Content );
-
-			// Is this a chat command?
+			// Run chat command, if this message is one
 			if ( message.Content[ 0 ] == '!' ) {
 				string command = message.Content[ 1.. ];
-
-				// Run this chat command if it exists
 				if ( ChatCommand.Exists( command ) ) await ChatCommand.Invoke( command, message );
 				else Log.Warn( $"Chat command '{command}' is unknown" );
-
 			}
-
 		}
 
 		// Fires after a channel user is updated in state...
 		private static async Task OnChannelUserUpdate( Client client, ChannelUser user ) {
-			Log.Info( "Channel user '{0}' ({1}) updated.", user.DisplayName, user.Identifier );
+			Log.Info( "Channel user {0} updated.", user.Global.ToString() );
 		}
 
 		// Fires after a channel is updated in state...
 		private static async Task OnChannelUpdate( Client client, Channel channel ) {
-			Log.Info( "Channel '{0}' ({1}) updated.", channel.Name, channel.Identifier );
+			Log.Info( "Channel {0} updated.", channel.ToString() );
 		}
 
 		/*private static async Task OnError( Client client, string message ) {

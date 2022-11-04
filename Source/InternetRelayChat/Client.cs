@@ -174,6 +174,14 @@ namespace TwitchBot.InternetRelayChat {
 				int receivedBytes = await secureStream!.ReadAsync( receivedData, cancellationToken );
 				Log.Debug( "Received {0}/{1} bytes: '{2}'", receivedBytes, receiveBufferSize, Encoding.UTF8.GetString( receivedData ).TrimEnd( "\r\n" ) );
 
+				// Connection is possibly over?
+				if ( receivedBytes == 0 ) {
+					await CloseAsync();
+					break;
+				};
+
+				// TODO: We should fire the OnReady here, because here we know the connection is definitely established due to the above zero-byte check. However, that is a bit complicated as we will only know that check fails if we send data, which is done after the OnReady event is fired.
+
 				// Parse the received data as IRC messages
 				Message[] messages = Message.Parse( receivedData, receivedBytes );
 
@@ -198,7 +206,7 @@ namespace TwitchBot.InternetRelayChat {
 				else if ( ExpectedHost != null && ( message.Host == null || !message.Host!.EndsWith( ExpectedHost ) ) ) throw new Exception( "Received message from foreign IRC server" );
 
 				// Complete the response completion source if we are expecting a response message
-				if ( responseCompletionSource != null ) responseCompletionSource!.SetResult( message );
+				else if ( responseCompletionSource != null ) responseCompletionSource!.SetResult( message );
 
 				// Otherwise, run the event to further process this message
 				else OnMessage?.Invoke( this, message );

@@ -11,7 +11,7 @@
 */
 
 namespace TwitchBot.Twitch {
-	public class ChannelUser : GlobalUser {
+	public class ChannelUser {
 
 		// Dynamic data from IRC message tags
 		public bool IsModerator { get; private set; } // mod
@@ -23,37 +23,44 @@ namespace TwitchBot.Twitch {
 		public string Type { get; private set; } = null!; // user-type
 
 		// Other relevant data
+		public readonly GlobalUser Global;
 		public readonly Channel Channel;
 
 		// Creates a channel user (and thus global user) from an IRC message
-		public ChannelUser( InternetRelayChat.Message ircMessage, Channel channel ) : base( ircMessage ) {
-			
+		public ChannelUser( InternetRelayChat.Message ircMessage, GlobalUser globalUser, Channel channel ) {
+
+			// Set relevant data
+			Global = globalUser;
+			Channel = channel;
+
 			// Set dynamic data
 			UpdateProperties( ircMessage );
 
-			// Set relevant data
-			Channel = channel;
+		}
 
+		public override string ToString() {
+			return $"'{Global.DisplayName}' ({Global.Identifier})";
 		}
 
 		// Updates the dynamic data from the IRC message tags
-		public new void UpdateProperties( InternetRelayChat.Message ircMessage ) {
-			base.UpdateProperties( ircMessage );
+		public void UpdateProperties( InternetRelayChat.Message ircMessage ) {
+
+			Global.UpdateProperties( ircMessage );
 
 			if ( !ircMessage.Tags.TryGetValue( "mod", out string? isModerator ) || string.IsNullOrWhiteSpace( isModerator ) ) throw new Exception( "IRC message does not contain a moderator tag for this channel user" );
-			IsModerator = bool.Parse( isModerator );
+			IsModerator = isModerator == "1";
 
 			if ( !ircMessage.Tags.TryGetValue( "subscriber", out string? isSubscriber ) || string.IsNullOrWhiteSpace( isSubscriber ) ) throw new Exception( "IRC message does not contain a subscriber tag for this channel user" );
-			IsSubscriber = bool.Parse( isSubscriber );
+			IsSubscriber = isSubscriber == "1";
 
-			if ( !ircMessage.Tags.TryGetValue( "turbo", out string? isTurbo ) || string.IsNullOrWhiteSpace( isTurbo ) ) throw new Exception( "IRC message does not contain a turbo tag for this channel user" );
-			IsTurbo = bool.Parse( isTurbo );
+			// This one isn't always there
+			if ( ircMessage.Tags.TryGetValue( "turbo", out string? isTurbo ) || string.IsNullOrWhiteSpace( isTurbo ) ) IsTurbo = isTurbo == "1";
 
-			if ( !ircMessage.Tags.TryGetValue( "first-msg", out string? isFirstMessager ) || string.IsNullOrWhiteSpace( isFirstMessager ) ) throw new Exception( "IRC message does not contain a first message tag for this channel user" );
-			IsFirstMessager = bool.Parse( isFirstMessager );
-
-			if ( !ircMessage.Tags.TryGetValue( "returning-chatter", out string? isReturningChatter ) || string.IsNullOrWhiteSpace( isReturningChatter ) ) throw new Exception( "IRC message does not contain a returning chatter tag for this channel user" );
-			IsReturningChatter = bool.Parse( isReturningChatter );
+			// This one isn't always there
+			if ( ircMessage.Tags.TryGetValue( "first-msg", out string? isFirstMessager ) || string.IsNullOrWhiteSpace( isFirstMessager ) ) IsFirstMessager = isFirstMessager == "1";
+			
+			// This one isn't always there
+			if ( ircMessage.Tags.TryGetValue( "returning-chatter", out string? isReturningChatter ) || string.IsNullOrWhiteSpace( isReturningChatter ) ) IsReturningChatter = isReturningChatter == "1";
 
 			if ( !ircMessage.Tags.TryGetValue( "badges", out string? badges ) || badges == null ) throw new Exception( "IRC message does not contain a badges tag for this channel user" );
 			Badges = badges;

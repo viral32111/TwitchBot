@@ -44,14 +44,14 @@ namespace TwitchBot.Features {
 		public static async Task GoalProgressCommand( Message message ) {
 
 			// Get this channel's goal, if they have one
-			if ( !channelGoals.TryGetValue( message.Channel.Identifier, out TimeStreamedGoal? goal ) ) {
-				Log.Warn( "No time streamed goal exists for channel '{0}' ({1})", message.Channel.Name, message.Channel.Identifier );
+			if ( !channelGoals.TryGetValue( message.Author.Channel.Identifier, out TimeStreamedGoal? goal ) ) {
+				Log.Warn( "No time streamed goal exists for channel '{0}' ({1})", message.Author.Channel.Name, message.Author.Channel.Identifier );
 				await message.Reply( "This channel has no time streamed goal." );
 				return;
 			}
 
 			// Fetch a list of this channel's streams
-			Stream[] streams = await message.Channel.FetchStreams();
+			Stream[] streams = await message.Author.Channel.FetchStreams();
 
 			// Total the duration of each stream after the goal's start date
 			TimeSpan totalDuration = streams.Aggregate( new TimeSpan( 0, 0, 0 ), ( cumulativeDuration, stream ) => {
@@ -60,7 +60,7 @@ namespace TwitchBot.Features {
 			} );
 
 			// Format the goal's message & send it back in Twitch chat
-			await message.Reply( string.Format( goal.MessageTemplate, Math.Floor( totalDuration.TotalHours ) ) );
+			await message.Reply( string.Format( goal.MessageTemplate, goal.TargetHours, Math.Floor( totalDuration.TotalHours ) ) );
 
 		}
 	}
