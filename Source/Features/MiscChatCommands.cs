@@ -6,8 +6,6 @@ using TwitchBot.Twitch;
 namespace TwitchBot.Features {
 	public class MiscChatCommands {
 
-		private static readonly Random randomGenerator = new();
-
 		[ModuleInitializer]
 		public static void Setup() {
 
@@ -27,7 +25,7 @@ namespace TwitchBot.Features {
 
 		[ChatCommand( "random" )]
 		public static async Task RandomNumberCommand( Message message ) {
-			await message.Reply( $"Your random number is {randomGenerator.Next( 100 )}" );
+			await message.Reply( $"Your random number is {Shared.RandomGenerator.Next( 100 )}" );
 		}
 
 		[ChatCommand( "cake" )]

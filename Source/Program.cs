@@ -103,7 +103,6 @@ namespace TwitchBot {
 			// Fetch this account's information
 			client.User = await GlobalUser.FetchFromAPI();
 			Log.Info( "I am {0}.", client.User.ToString() );
-			Shared.MyAccountName = client.User.DisplayName; // DEPRECATED ASS SHIT
 
 			// Register event handlers for the Twitch client
 			client.OnSecureCommunication += OnSecureCommunication;

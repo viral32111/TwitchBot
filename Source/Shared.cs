@@ -12,10 +12,8 @@ namespace TwitchBot {
 	public static class Shared {
 		private static readonly string randomCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
+		public static readonly Random RandomGenerator = new();
 		public static readonly HttpClient httpClient = new();
-
-		[Obsolete( "Use Twitch.Client.User.DisplayName instead" )]
-		public static string? MyAccountName;
 
 		public static UserAccessToken? UserAccessToken;
 		public static readonly string UserAccessTokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
