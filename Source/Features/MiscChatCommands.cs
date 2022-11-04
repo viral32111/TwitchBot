@@ -13,6 +13,10 @@ namespace TwitchBot.Features {
 
 			// Register the chat commands
 			ChatCommand.Register( HelloWorldCommand );
+			ChatCommand.Register( RandomNumberCommand );
+			ChatCommand.Register( ApertureScienceCommand );
+			ChatCommand.Register( SocialMediasCommand );
+			ChatCommand.Register( WhoAmICommand );
 
 		}
 
@@ -28,7 +32,7 @@ namespace TwitchBot.Features {
 
 		[ChatCommand( "cake" )]
 		public static async Task ApertureScienceCommand( Message message ) {
-			await message.Reply( "This was a triumph!\nI'm making a note here: Huge success!\nIt's hard to overstate my satisfaction.\n\nWe do what we must because we can. For the good of all of us. Except the ones who are dead.\n\nBut there's no sense crying over every mistake.\nYou just keep on trying 'til you run out of cake." );
+			await message.Reply( "This was a triumph! I'm making a note here: Huge success! It's hard to overstate my satisfaction. We do what we must because we can. For the good of all of us. Except the ones who are dead. But there's no sense crying over every mistake. You just keep on trying 'til you run out of cake." );
 		}
 
 		[ChatCommand( "socials", new string[] { "twitter" } )]
