@@ -21,7 +21,7 @@ namespace TwitchBot.Twitch {
 
 			// Send the request & make sure to retry when it fails due to token expiry
 			HttpResponseMessage httpResponse = await Shared.httpClient.SendAsync( httpRequest );
-			Log.Debug( "API request: {0} '{1}' => {2} {3}", httpRequest.Method, httpRequest.RequestUri!.ToString(), ( int ) httpResponse.StatusCode, httpResponse.StatusCode.ToString() );
+			Log.Debug( "API request: {0} '{1}' => {2} {3}", httpRequest.Method.ToString(), httpRequest.RequestUri!.ToString(), ( int ) httpResponse.StatusCode, httpResponse.StatusCode.ToString() );
 			if ( httpResponse.StatusCode == HttpStatusCode.Unauthorized ) {
 				Log.Warn( "User access token has expired, refreshing & saving..." );
 				await Shared.UserAccessToken.DoRefresh();
