@@ -25,6 +25,9 @@ namespace TwitchBot {
 		// Twitch API
 		public static readonly string TwitchAPIBaseURL;
 
+		// Twitch EventSub
+		public static readonly string TwitchEventSubWebSocketURL;
+
 		// Cloudflare Tunnel client
 		public static readonly string CloudflareTunnelVersion;
 		public static readonly string CloudflareTunnelChecksum;
@@ -103,6 +106,9 @@ namespace TwitchBot {
 				// Twitch API
 				TwitchAPIBaseURL = configuration.NestedGet<string>( "twitch.api.url" );
 
+				// Twitch EventSub
+				TwitchEventSubWebSocketURL = configuration.NestedGet<string>( "twitch.eventsub.websocket.url" );
+
 				// Cloudflare Tunnel client
 				CloudflareTunnelVersion = configuration.NestedGet<string>( "cloudflare.tunnel.version" );
 				CloudflareTunnelChecksum = configuration.NestedGet<string>( "cloudflare.tunnel.checksum" );
@@ -175,6 +181,11 @@ namespace TwitchBot {
 				[ "api" ] = new JsonObject() {
 					[ "url" ] = "api.twitch.tv/helix"
 				},
+				[ "eventsub" ] = new JsonObject() {
+					[ "websocket" ] = new JsonObject() {
+						[ "url" ] = "eventsub-beta.wss.twitch.tv/ws"
+					}
+				}
 			},
 			[ "cloudflare" ] = new JsonObject() {
 				[ "tunnel" ] = new JsonObject() {

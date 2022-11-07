@@ -3,11 +3,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
@@ -22,6 +23,7 @@ namespace TwitchBot {
 		private static EventHandler? consoleCtrlHandler;
 
 		private static readonly Client client = new();
+		private static readonly Twitch.EventSubscription.Client eventSubClient = new();
 
 		// The main entry-point of the program
 		public static async Task Main( string[] arguments ) {
@@ -115,6 +117,13 @@ namespace TwitchBot {
 			client.OnChannelUpdate += OnChannelUpdate;
 			Log.Info( "Registered Twitch client event handlers." );
 
+			// Register event handlers for the EventSub client
+			eventSubClient.OnReady += OnEventSubClientReady;
+			eventSubClient.OnChannelUpdate += OnEventSubClientChannelUpdate;
+			eventSubClient.OnStreamStart += OnEventSubClientStreamStart;
+			eventSubClient.OnStreamFinish += OnEventSubClientStreamFinish;
+			Log.Info( "Registered Twitch EventSub client event handlers." );
+
 			// TODO: Solution for Linux & Docker environment stop signal
 			if ( Shared.IsWindows() ) {
 				consoleCtrlHandler += new EventHandler( OnApplicationExit );
@@ -143,6 +152,10 @@ namespace TwitchBot {
 			// Close Redis connection
 			Redis.Close().Wait();
 			Log.Info( "Disconnected from Redis." );
+
+			// Close the EventSub websocket connection
+			//Log.Info( "Closing EventSub websocket connection..." );
+			//eventSubClient.CloseAsync( WebSocketCloseStatus.NormalClosure, CancellationToken.None ).Wait();
 
 			// Close chat connection
 			Log.Info( "Disconnecting..." );
@@ -200,6 +213,9 @@ namespace TwitchBot {
 			Log.Info( "Joining primary channel {0}...", primaryChannel.ToString() );
 			if ( await client.JoinChannel( primaryChannel ) ) {
 				Log.Info( "Joined primary channel {0}.", primaryChannel.ToString() );
+
+				await eventSubClient.ConnectAsync( Config.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
+				
 			} else {
 				Log.Error( "Failed to join primary channel!" );
 			}
@@ -236,6 +252,33 @@ namespace TwitchBot {
 		// Fires after a channel is updated in state...
 		private static async Task OnChannelUpdate( Client client, Channel channel ) {
 			Log.Info( "Channel {0} updated.", channel.ToString() );
+		}
+
+		// Fires when the EventSub client is ready
+		private static async Task OnEventSubClientReady( Twitch.EventSubscription.Client eventSubClient ) {
+			Log.Info( "EventSub client is ready, our session identifier is '{0}'.", eventSubClient.SessionIdentifier );
+
+			Channel? channel = State.GetChannel( 127154290 ); // Just for testing
+			if ( channel == null ) throw new Exception( "Cannot find channel" );
+
+			await eventSubClient.SubscribeForChannel( Twitch.EventSubscription.SubscriptionType.ChannelUpdate, channel );
+			await eventSubClient.SubscribeForChannel( Twitch.EventSubscription.SubscriptionType.StreamStart, channel );
+			await eventSubClient.SubscribeForChannel( Twitch.EventSubscription.SubscriptionType.StreamFinish, channel );
+		}
+
+		// Fires when the EventSub client receives a channel update notification
+		private static async Task OnEventSubClientChannelUpdate( Twitch.EventSubscription.Client eventSubClient, Channel channel, string title, string language, int categoryId, string categoryName, bool isMature ) {
+			Log.Info( "Channel {0} updated their information ('{1}', '{2}', '{3}', '{4}', '{5}')", channel.ToString(), title, language, categoryId, categoryName, isMature );
+		}
+
+		// Fires when the EventSub client receives a stream start notification
+		private static async Task OnEventSubClientStreamStart( Twitch.EventSubscription.Client eventSubClient, Channel channel, DateTimeOffset startedAt ) {
+			Log.Info( "Channel {0} started streaming at '{1}'.", channel.ToString(), startedAt.ToString() );
+		}
+
+		// Fires when the EventSub client receives a stream finish notification
+		private static async Task OnEventSubClientStreamFinish( Twitch.EventSubscription.Client eventSubClient, Channel channel ) {
+			Log.Info( "Channel {0} finished streaming.", channel.ToString() );
 		}
 
 		/*private static async Task OnError( Client client, string message ) {
