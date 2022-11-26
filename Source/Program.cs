@@ -1,9 +1,9 @@
 ﻿#pragma warning disable CS1998
 
+using MongoDB.Driver;
 using System;
 using System.IO;
 using System.Linq;
-using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Authentication;
@@ -12,9 +12,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
+using TwitchBot.Database;
+using TwitchBot.Database.Documents;
+using System.Collections.Generic;
 
-namespace TwitchBot {
-	public class Program {
+namespace TwitchBot
+{
+    public class Program {
 
 		// Windows-only
 		[DllImport( "Kernel32" )]
@@ -66,15 +70,11 @@ namespace TwitchBot {
 				Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			}
 
-			// Open the connection to the database
-			await Database.Open();
-			Log.Info( "Opened connection to the database ({0}).", Database.GetServerVersion() );
-
-			// Setup tables in the database
-			await Database.SetupTables();
-			Log.Info( "Setup tables in the database." );
+			List<string> databaseCollectionNames = await Mongo.Database.ListCollectionNames().ToListAsync();
+			Log.Info( "Found {0} collection(s) in the database: {1}.", databaseCollectionNames.Count, string.Join( ", ", databaseCollectionNames ) );
 
 			// Open Redis connection
+			// TODO: What are we even using Redis for??
 			await Redis.Open();
 			Log.Info( "Connected to Redis." );
 
@@ -146,8 +146,9 @@ namespace TwitchBot {
 			//Cloudflare.StopTunnel();
 
 			// Close the connection to the database
-			Database.Close().Wait();
-			Log.Info( "Closed connection to the database." );
+			// TODO: I guess Mongo does this automatically
+			/*Database.Close().Wait();
+			Log.Info( "Closed connection to the database." );*/
 
 			// Close Redis connection
 			Redis.Close().Wait();
@@ -214,7 +215,7 @@ namespace TwitchBot {
 			if ( await client.JoinChannel( primaryChannel ) ) {
 				Log.Info( "Joined primary channel {0}.", primaryChannel.ToString() );
 
-				await eventSubClient.ConnectAsync( Config.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
+				//await eventSubClient.ConnectAsync( Config.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
 				
 			} else {
 				Log.Error( "Failed to join primary channel!" );

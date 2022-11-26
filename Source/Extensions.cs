@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -88,6 +90,11 @@ namespace TwitchBot {
 			}
 
 			return result;
+		}
+
+		// https://stackoverflow.com/a/67269183
+		public static IEnumerable<T> NotNull<T>( this IEnumerable<T?> enumerable ) {
+			return enumerable.Where( element => element != null ).Select( element => element! );
 		}
 
 	}

@@ -1,8 +1,11 @@
-﻿using System;
+﻿using MongoDB.Driver;
+using System;
 using System.Collections.Generic;
-using System.Data.Common;
+using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using TwitchBot.Database;
+using TwitchBot.Database.Documents;
 
 /* Channel Tags:
  room-id=127154290
@@ -145,22 +148,11 @@ namespace TwitchBot.Twitch {
 			await UpdateStreamsInDatabase();
 
 			// Fetch streams from the database
-			DbDataReader reader = await Database.QueryWithResults( $"SELECT Identifier, UNIX_TIMESTAMP( Start ) AS StartedAt, Duration FROM StreamHistory WHERE Channel = ?identifier ORDER BY Start DESC LIMIT ?limit;", new() {
-				{ "?identifier", Identifier },
-				{ "?limit", limit }
-			} );
+			IMongoCollection<StreamDocument> streamsCollection = Mongo.Database.GetCollection<StreamDocument>( Mongo.StreamsCollectionName );
+			List<StreamDocument> streamDocuments = await streamsCollection.Find( Builders<StreamDocument>.Filter.Eq( "channel", Identifier ) ).Limit( limit ).ToListAsync();
 
-			// Populate the list of streams with the query results
-			List<Stream> streams = new();
-			while ( await reader.ReadAsync() ) streams.Add( new(
-				reader.GetInt32( reader.GetOrdinal( "Identifier" ) ),
-				DateTimeOffset.FromUnixTimeSeconds( reader.GetInt64( reader.GetOrdinal( "StartedAt" ) ) ),
-				reader.GetInt32( reader.GetOrdinal( "Duration" ) ),
-				this
-			) );
-
-			// We're finished reading query results
-			await reader.CloseAsync();
+			// Create a list of streams from the database results
+			List<Stream> streams = streamDocuments.Select( streamDocument => new Stream( streamDocument, this ) ).ToList();
 
 			// Sort the list in order of when the streams started
 			streams.Sort( ( Stream currentStream, Stream nextStream ) => nextStream.StartedAt.CompareTo( currentStream.StartedAt ) );
@@ -190,21 +182,15 @@ namespace TwitchBot.Twitch {
 				// Update the cursor to the next page (is set to null if this is the last page)
 				nextPageCursor = streamsResponse[ "pagination" ]![ "cursor" ]?.GetValue<string?>();
 
-				// Loop through the list of streams, skipping invalid ones...
-				foreach ( JsonNode? node in streamsResponse[ "data" ]!.AsArray() ) {
-					if ( node == null ) continue;
-					Stream stream = new( node.AsObject(), this );
+				// Create a list of streams from the API results
+				List<Stream> streams = streamsResponse[ "data" ]!.AsArray().NotNull().Select( node => new Stream( node.AsObject(), this ) ).ToList();
 
-					// Add this stream to the database, or update its duration if it already exists
-					await Database.Query( $"INSERT INTO StreamHistory ( Identifier, Channel, Start, Duration ) VALUES ( ?streamIdentifier, ?channelIdentifier, FROM_UNIXTIME( ?startedAt ), ?duration ) ON DUPLICATE KEY UPDATE Duration = ?duration;", new() {
-						{ "?streamIdentifier", stream.Identifier },
-						{ "?channelIdentifier", stream.Channel.Identifier },
-						{ "?startedAt", stream.StartedAt.ToUnixTimeSeconds() },
-						{ "?duration", stream.Duration.TotalSeconds }
-					} );
-				}
+				// Add all the streams to the database, or update their durations if they already exist
+				#error This does not perform an insert or update yet!!!
+				IMongoCollection<StreamDocument> streamsCollection = Mongo.Database.GetCollection<StreamDocument>( Mongo.StreamsCollectionName );
+				await streamsCollection.InsertManyAsync( streams.Select( stream => new StreamDocument( stream ) ) );
 
-				// Repeat above until we are on the last page, if we are traversing
+			// Repeat above until we are on the last page, if we are traversing
 			} while ( nextPageCursor != null && traversePages == true );
 
 		}

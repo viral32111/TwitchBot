@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using TwitchBot.Database.Documents;
 
 namespace TwitchBot.Twitch {
 	public class Stream {
@@ -10,7 +11,6 @@ namespace TwitchBot.Twitch {
 		public readonly int Identifier;
 		public readonly DateTimeOffset StartedAt;
 		public readonly TimeSpan Duration;
-
 		public readonly Channel Channel;
 
 		public Stream( int identifier, DateTimeOffset startedAt, int durationSeconds, Channel channel ) {
@@ -32,6 +32,13 @@ namespace TwitchBot.Twitch {
 				int.Parse( durationMatch.Groups[ 3 ].Value.NullIfEmpty() ?? "0" ) // Seconds
 			);
 
+			Channel = channel;
+		}
+
+		public Stream( StreamDocument streamDocument, Channel channel ) {
+			Identifier = streamDocument.Identifier;
+			StartedAt = streamDocument.Began;
+			Duration = new( 0, 0, streamDocument.Duration );
 			Channel = channel;
 		}
 	}
