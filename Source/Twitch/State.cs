@@ -89,7 +89,7 @@ namespace TwitchBot.Twitch {
 			// USERSTATE updates seem to never contain a user-id IRC message tag, so we can't use GlobalUser.ExtractIdentifier()
 			if ( !ircMessage.Tags.TryGetValue( "display-name", out string? displayName ) || string.IsNullOrWhiteSpace( displayName ) ) throw new Exception( "Cannot possibly update a channel user without their display name IRC message tag" );
 			GlobalUser? globalUser = FindGlobalUserByName( displayName.ToLower() );
-			if ( globalUser == null ) globalUser = State.UpdateGlobalUser( ircMessage ); // for PRIVMSG
+			globalUser ??= UpdateGlobalUser( ircMessage ); // for PRIVMSG
 			Log.Debug( "Found global user '{0}' in state.", globalUser.Identifier );
 
 			// TODO: This doesn't even get the user for a specific channel, so our channel users are glorified global users right now...
