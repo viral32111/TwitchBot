@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using TwitchBot.Database;
 
 /* Channel Tags:
  room-id=127154290
@@ -183,7 +182,7 @@ namespace TwitchBot.Twitch {
 				// Add all the streams to the database, or update if they already exist
 				foreach ( Stream stream in streams ) await stream.DatabaseUpdate( insertIfMissing: true );
 
-			// Repeat above until we are on the last page, if we are traversing
+				// Repeat above until we are on the last page, if we are traversing
 			} while ( nextPageCursor != null && traversePages == true );
 
 		}

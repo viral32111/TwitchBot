@@ -27,7 +27,7 @@ namespace TwitchBot.Twitch {
 
 			// Set identifier
 			Identifier = ExtractIdentifier( ircMessage );
-			
+
 			// Extract sent at from unix timestamp
 			if ( !ircMessage.Tags.TryGetValue( "tmi-sent-ts", out string? messageSentTimestamp ) || messageSentTimestamp == null ) throw new Exception( "IRC message does not contain a timestamp for this message" );
 			SentAt = DateTimeOffset.FromUnixTimeMilliseconds( long.Parse( messageSentTimestamp ) );

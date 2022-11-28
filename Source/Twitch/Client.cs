@@ -2,13 +2,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using TwitchBot.InternetRelayChat;
 
 // A client for connecting to Twitch chat
 // https://dev.twitch.tv/docs/irc
@@ -51,7 +47,7 @@ namespace TwitchBot.Twitch {
 		public event OnGlobalUserLeaveChannelHandler? OnGlobalUserLeaveChannel;
 
 		// Event that runs after a chat message is received
-		public delegate Task OnChannelChatMessageHandler ( Client client, Message message );
+		public delegate Task OnChannelChatMessageHandler( Client client, Message message );
 		public event OnChannelChatMessageHandler? OnChannelChatMessage;
 
 		// Event that runs after a user is updated in a channel
@@ -141,7 +137,7 @@ namespace TwitchBot.Twitch {
 			// Update ourselves in state & fire the ready event, if we are being informed about our global self
 			} else if ( ircMessage.IsFromSystem() && ircMessage.Command == Command.GlobalUserState && ircMessage.Tags.Count > 0 ) {
 				OnReady?.Invoke( this, State.UpdateGlobalUser( ircMessage ) );
-			
+
 			// Update a channel in state & fire the channel update event, if we are being informed of a channel update
 			} else if ( ircMessage.IsFromSystem() && ircMessage.Command == Command.RoomState && ircMessage.Middle != null && ircMessage.Tags.Count > 0 ) {
 				OnChannelUpdate?.Invoke( this, State.UpdateChannel( ircMessage, this ) );
@@ -150,12 +146,12 @@ namespace TwitchBot.Twitch {
 			} else if ( ircMessage.IsFromSystem() && ircMessage.Command == Command.UserState && ircMessage.Middle != null && ircMessage.Tags.Count > 0 ) {
 				Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
 				if ( channel == null ) throw new Exception( "Cannot update channel user because the channel is unknown" );
-				
+
 				OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( ircMessage, channel ) );
 
 			// Are we being informed about the users in a channel we just joined?
 			} else if ( ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.Names && ircMessage.Middle != null && ircMessage.Parameters != null ) {
-				
+
 				// Find the channel in state
 				Channel? channel = State.FindChannelByName( ircMessage.Middle[ ( ircMessage.Middle.LastIndexOf( '#' ) + 1 ).. ] );
 				if ( channel == null ) throw new Exception( "Received user list for an unknown channel" );
@@ -180,7 +176,7 @@ namespace TwitchBot.Twitch {
 
 			// Did someone send a chat message in a channel?
 			} else if ( !ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.PrivateMessage && ircMessage.Middle != null && ircMessage.Parameters != null && ircMessage.Tags.Count > 0 ) {
-				
+
 				// Update state for channel, channel user & message
 				Channel channel = State.UpdateChannel( ircMessage, this );
 				ChannelUser channelUser = State.UpdateChannelUser( ircMessage, channel );
@@ -191,7 +187,7 @@ namespace TwitchBot.Twitch {
 
 			// Has a user (that isn't us) joined a channel's chat?
 			} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Join && ircMessage.Middle != null ) {
-				
+
 				// Find the channel in state
 				Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
 				if ( channel == null ) throw new Exception( "Received user join for an unknown channel" );

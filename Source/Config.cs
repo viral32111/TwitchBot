@@ -102,7 +102,7 @@ namespace TwitchBot {
 				// Twitch Chat IRC
 				TwitchChatBaseURL = configuration.NestedGet<string>( "twitch.chat.url" );
 				TwitchChatPrimaryChannelIdentifier = configuration.NestedGet<int>( "twitch.chat.channel" ); // This changed from a string (channel name) to an integer (channel id) in 0.5.0
-				
+
 				// Twitch API
 				TwitchAPIBaseURL = configuration.NestedGet<string>( "twitch.api.url" );
 

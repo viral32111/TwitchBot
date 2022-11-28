@@ -122,6 +122,6 @@ namespace TwitchBot.InternetRelayChat {
 
 		[Obsolete( "Use InternetRelayChat.Message.IsAboutUser() instead" )]
 		public bool IsForUser( string user ) => !IsServer() && ( Nick == user || User == user );
-		
+
 	}
 }

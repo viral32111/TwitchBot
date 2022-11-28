@@ -2,21 +2,19 @@
 
 using MongoDB.Driver;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
 using System.Threading.Tasks;
+using TwitchBot.Database;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
-using TwitchBot.Database;
-using System.Collections.Generic;
 
-namespace TwitchBot
-{
+namespace TwitchBot {
 	public class Program {
 
 		// Windows-only
@@ -216,7 +214,7 @@ namespace TwitchBot
 				Log.Info( "Joined primary channel {0}.", primaryChannel.ToString() );
 
 				//await eventSubClient.ConnectAsync( Config.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
-				
+
 			} else {
 				Log.Error( "Failed to join primary channel!" );
 			}

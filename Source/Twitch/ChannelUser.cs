@@ -58,7 +58,7 @@ namespace TwitchBot.Twitch {
 
 			// This one isn't always there
 			if ( ircMessage.Tags.TryGetValue( "first-msg", out string? isFirstMessager ) || string.IsNullOrWhiteSpace( isFirstMessager ) ) IsFirstMessager = isFirstMessager == "1";
-			
+
 			// This one isn't always there
 			if ( ircMessage.Tags.TryGetValue( "returning-chatter", out string? isReturningChatter ) || string.IsNullOrWhiteSpace( isReturningChatter ) ) IsReturningChatter = isReturningChatter == "1";
 
