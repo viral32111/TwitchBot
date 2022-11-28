@@ -13,12 +13,11 @@ using System.Threading.Tasks;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
 using TwitchBot.Database;
-using TwitchBot.Database.Documents;
 using System.Collections.Generic;
 
 namespace TwitchBot
 {
-    public class Program {
+	public class Program {
 
 		// Windows-only
 		[DllImport( "Kernel32" )]
@@ -70,6 +69,7 @@ namespace TwitchBot
 				Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
 			}
 
+			// List all collections in MongoDB
 			List<string> databaseCollectionNames = await Mongo.Database.ListCollectionNames().ToListAsync();
 			Log.Info( "Found {0} collection(s) in the database: {1}.", databaseCollectionNames.Count, string.Join( ", ", databaseCollectionNames ) );
 

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using TwitchBot.Database;
-using TwitchBot.Database.Documents;
 
 /* Channel Tags:
  room-id=127154290
@@ -147,12 +146,8 @@ namespace TwitchBot.Twitch {
 			// Update the stream history in the database
 			await UpdateStreamsInDatabase();
 
-			// Fetch streams from the database
-			IMongoCollection<StreamDocument> streamsCollection = Mongo.Database.GetCollection<StreamDocument>( Mongo.StreamsCollectionName );
-			List<StreamDocument> streamDocuments = await streamsCollection.Find( Builders<StreamDocument>.Filter.Eq( "channel", Identifier ) ).Limit( limit ).ToListAsync();
-
-			// Create a list of streams from the database results
-			List<Stream> streams = streamDocuments.Select( streamDocument => new Stream( streamDocument, this ) ).ToList();
+			// Fetch our streams from the database
+			List<Stream> streams = await Stream.DatabaseFind( forChannel: this, limit: limit );
 
 			// Sort the list in order of when the streams started
 			streams.Sort( ( Stream currentStream, Stream nextStream ) => nextStream.StartedAt.CompareTo( currentStream.StartedAt ) );
@@ -183,12 +178,10 @@ namespace TwitchBot.Twitch {
 				nextPageCursor = streamsResponse[ "pagination" ]![ "cursor" ]?.GetValue<string?>();
 
 				// Create a list of streams from the API results
-				List<Stream> streams = streamsResponse[ "data" ]!.AsArray().NotNull().Select( node => new Stream( node.AsObject(), this ) ).ToList();
+				List<Stream> streams = streamsResponse[ "data" ]!.AsArray().NotNull().Select( streamData => new Stream( streamData.AsObject(), this ) ).ToList();
 
-				// Add all the streams to the database, or update their durations if they already exist
-				#error This does not perform an insert or update yet!!!
-				IMongoCollection<StreamDocument> streamsCollection = Mongo.Database.GetCollection<StreamDocument>( Mongo.StreamsCollectionName );
-				await streamsCollection.InsertManyAsync( streams.Select( stream => new StreamDocument( stream ) ) );
+				// Add all the streams to the database, or update if they already exist
+				foreach ( Stream stream in streams ) await stream.DatabaseUpdate( insertIfMissing: true );
 
 			// Repeat above until we are on the last page, if we are traversing
 			} while ( nextPageCursor != null && traversePages == true );

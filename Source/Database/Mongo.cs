@@ -1,5 +1,6 @@
 ﻿using MongoDB.Driver;
 using System;
+using System.Reflection;
 
 namespace TwitchBot.Database {
 	public static class Mongo {
@@ -27,7 +28,7 @@ namespace TwitchBot.Database {
 				Username = Config.DatabaseUserName,
 				Password = Config.DatabaseUserPassword,
 				DatabaseName = Config.DatabaseName,
-				ApplicationName = "TwitchBot",
+				ApplicationName = Assembly.GetExecutingAssembly().GetName().Name,
 				DirectConnection = true
 			}.ToMongoUrl();
 
@@ -37,7 +38,7 @@ namespace TwitchBot.Database {
 
 			// Get the database
 			Database = mongoClient.GetDatabase( connectionUrl.DatabaseName );
-			Log.Info( $"Got MongoDB database '{connectionUrl.DatabaseName}'." );
+			Log.Info( $"Got Mongo database '{connectionUrl.DatabaseName}'." );
 
 		}
 	}
