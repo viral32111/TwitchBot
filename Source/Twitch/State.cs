@@ -53,6 +53,8 @@ namespace TwitchBot.Twitch {
 		public static Channel? GetChannel( int identifier ) => Channels[ identifier ];
 		public static Channel? FindChannelByName( string name ) => Channels.Values.Where( channel => channel.Name == name.ToLower() ).FirstOrDefault();
 
+		public static bool TryGetChannel( int identifier, out Channel? channel ) => Channels.TryGetValue( identifier, out channel );
+
 		/*********************************************************************************************/
 
 		// This is needed for global users created by the users API response

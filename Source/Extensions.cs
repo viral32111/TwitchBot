@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -62,6 +63,9 @@ namespace TwitchBot {
 
 		public static string? NullIfEmpty( this string str ) => string.IsNullOrEmpty( str ) ? null : str;
 		public static string? NullIfWhiteSpace( this string str ) => string.IsNullOrWhiteSpace( str ) ? null : str;
+
+		// This is meant to supersede the two extensions above, cus I think this is the only reason they were implemented
+		public static string? ValueOr( this Capture capture, string fallback ) => string.IsNullOrEmpty( capture.Value ) ? fallback : capture.Value;
 
 		public static string? Join( this Dictionary<string, string?> dictionary, char separator = ';', char pairSeparator = '=' ) {
 			if ( dictionary.Count == 0 ) return null;
