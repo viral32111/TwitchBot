@@ -215,6 +215,8 @@ namespace TwitchBot {
 
 				//await eventSubClient.ConnectAsync( Config.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
 
+				// TODO: Start time streamed goal thing
+
 			} else {
 				Log.Error( "Failed to join primary channel!" );
 			}

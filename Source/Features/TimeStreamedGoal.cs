@@ -14,13 +14,17 @@ namespace TwitchBot.Features {
 		// Metadata about this goal
 		public readonly int TargetHours;
 		public readonly DateTime StartDate;
-		public readonly string MessageTemplate;
+		public readonly string ProgressMessageTemplate;
+		public readonly string AchievedMessageTemplate;
+		public readonly string CompletionMessageTemplate;
 
 		// Initialize the above metadata
-		public TimeStreamedGoal( int targetHours, DateTime startDate, string messageTemplate ) {
+		public TimeStreamedGoal( int targetHours, DateTime startDate, string progressMessageTemplate, string achievedMessageTemplate, string completionMessageTemplate ) {
 			TargetHours = targetHours;
 			StartDate = startDate;
-			MessageTemplate = messageTemplate;
+			ProgressMessageTemplate = progressMessageTemplate;
+			AchievedMessageTemplate = achievedMessageTemplate;
+			CompletionMessageTemplate = completionMessageTemplate;
 		}
 
 		[ModuleInitializer] // Makes this method run when the program starts
@@ -31,7 +35,9 @@ namespace TwitchBot.Features {
 			channelGoals.Add( 127154290, new(
 				targetHours: 100,
 				startDate: new( 2022, 11, 1 ), // 1st of November 2022
-				messageTemplate: "I am trying to stream {0} hours throughout November, so far I have streamed for {1} hours!"
+				progressMessageTemplate: "I am trying to stream {0} hours throughout November, so far I have streamed for {1} hours!",
+				achievedMessageTemplate: "I have achieved my goal to stream {0} hours throughout November, so far I have streamed for {1} hours!",
+				completionMessageTemplate: "I have reached my goal of streaming {0} hours throughout November!"
 			) );
 
 			// Register the chat command
@@ -50,18 +56,53 @@ namespace TwitchBot.Features {
 				return;
 			}
 
-			// Fetch a list of this channel's streams
-			Stream[] streams = await message.Author.Channel.FetchStreams();
+			// Get the goal progress
+			double totalHoursStreamed = await GetGoalProgress( message.Author.Channel, goal );
 
-			// Total the duration of each stream after the goal's start date
-			TimeSpan totalDuration = streams.Aggregate( new TimeSpan( 0, 0, 0 ), ( cumulativeDuration, stream ) => {
-				if ( stream.StartedAt >= goal.StartDate ) cumulativeDuration += stream.Duration;
-				return cumulativeDuration;
-			} );
+			// Has the channel completed their goal?
+			if ( totalHoursStreamed >= goal.TargetHours ) {
+				await message.Reply( string.Format( goal.AchievedMessageTemplate, goal.TargetHours, totalHoursStreamed ) );
 
-			// Format the goal's message & send it back in Twitch chat
-			await message.Reply( string.Format( goal.MessageTemplate, goal.TargetHours, Math.Floor( totalDuration.TotalHours ) ) );
+			// The channel has not completed their goal yet
+			} else {
+				await message.Reply( string.Format( goal.ProgressMessageTemplate, goal.TargetHours, totalHoursStreamed ) );
+			}
 
 		}
+
+		// Posts a message in the channel's chat when they hit their goal
+		// NOTE: This method is meant to be called often at an interval (e.g. every 5 minutes) until the goal is completed
+		public static async Task<bool> AnnounceGoalCompletion( Channel channel ) {
+
+			// Fail if this channel does not have a goal
+			if ( !channelGoals.TryGetValue( channel.Identifier, out TimeStreamedGoal? goal ) ) throw new Exception( "Channel has no time streamed goal" );
+
+			// Get the goal progress
+			double totalHoursStreamed = await GetGoalProgress( channel, goal );
+
+			// Has the channel completed their goal?
+			if ( totalHoursStreamed >= goal.TargetHours ) {
+				await channel.SendMessage( string.Format( goal.CompletionMessageTemplate, goal.TargetHours ) );
+				return true;
+
+			// The channel has not completed their goal yet
+			} else return false;
+
+		}
+
+		// Gets the progress of the current goal
+		public static async Task<double> GetGoalProgress( Channel channel, TimeStreamedGoal goal ) {
+			Stream[] streams = await channel.FetchStreams();
+			return Math.Floor( TotalStreamDuration( streams, goal.StartDate ).TotalHours );
+		}
+
+		// Totals the duration of each stream after a goal's start date
+		public static TimeSpan TotalStreamDuration( Stream[] streams, DateTimeOffset startDate ) {
+			return streams.Aggregate( new TimeSpan( 0, 0, 0 ), ( cumulativeDuration, stream ) => {
+				if ( stream.StartedAt >= startDate ) cumulativeDuration += stream.Duration;
+				return cumulativeDuration;
+			} );
+		}
+
 	}
 }
