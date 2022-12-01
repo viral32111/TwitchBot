@@ -32,9 +32,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: 7.0.x
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -72,10 +72,10 @@ jobs:
         with:
           name: TwitchBot
           path: |
-            ./bin/Release/net6.0/*.dll
-            ./bin/Release/net6.0/TwitchBot.deps.json
-            ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
-            ./bin/Release/net6.0/runtimes/*/lib/*/*.dll
+            ./bin/Release/net7.0/*.dll
+            ./bin/Release/net7.0/TwitchBot.deps.json
+            ./bin/Release/net7.0/TwitchBot.runtimeconfig.json
+            ./bin/Release/net7.0/runtimes/*/lib/*/*.dll
 
       - name: Download build artifacts
         uses: actions/download-artifact@v3

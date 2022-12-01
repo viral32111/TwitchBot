@@ -1,5 +1,5 @@
 # Start from ASP.NET Core Runtime
-FROM ghcr.io/viral32111/aspnetcore:6.0
+FROM ghcr.io/viral32111/aspnetcore:7.0
 
 # Configure directories & files
 ARG TWITCHBOT_DIRECTORY=/opt/twitch-bot \

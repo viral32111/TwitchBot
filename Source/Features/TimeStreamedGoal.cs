@@ -32,13 +32,13 @@ namespace TwitchBot.Features {
 
 			// Setup the channel goal for RawrelTV
 			// TODO: Move this to the configuration file!
-			channelGoals.Add( 127154290, new(
+			/*channelGoals.Add( 127154290, new(
 				targetHours: 100,
 				startDate: new( 2022, 11, 1 ), // 1st of November 2022
 				progressMessageTemplate: "I am trying to stream {0} hours throughout November, so far I have streamed for {1} hours!",
-				achievedMessageTemplate: "I have achieved my goal to stream {0} hours throughout November, so far I have streamed for {1} hours!",
+				achievedMessageTemplate: "I have achieved my goal to stream {0} hours throughout November, as so far I have streamed for {1} hours!",
 				completionMessageTemplate: "I have reached my goal of streaming {0} hours throughout November!"
-			) );
+			) );*/
 
 			// Register the chat command
 			ChatCommand.Register( GoalProgressCommand );
