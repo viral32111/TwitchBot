@@ -3,121 +3,129 @@ name: Build
 on:
   push:
     paths:
-    - '**.cs'
-    - '**.csproj'
-    - '**.sln'
-    - 'Dockerfile'
-    - '.dockerignore'
-    - '.github/workflows/build.yml'
+      - 'Source/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/build.yml'
     branches:
-    - '**'
+      - '**'
     tags:
-    - '*.*.*'
+      - '*.*.*'
   pull_request:
     branches:
-    - '**'
+      - '**'
   workflow_dispatch:
 
 env:
   REGISTRY_NAME: ghcr.io
+  PUBLISHER_WEBSITE: https://viral32111.com
 
 jobs:
   build:
-    name: Ubuntu
-    runs-on: ubuntu-latest
+    name: Build
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
       packages: write
-
     steps:
-    - name: Clone Repository
-      uses: actions/checkout@v3
+      - name: Clone repository
+        uses: actions/checkout@v3
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: 6.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: 6.0.x
 
-    - name: Login to Registry
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ env.REGISTRY_NAME }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64
 
-    - name: Add GitHub Packages Source
-      run: |
-        dotnet nuget add source \
-          --name github \
-          --username ${{ github.repository_owner }} \
-          --password ${{ secrets.GITHUB_TOKEN }} \
-          --store-password-in-clear-text \
-          "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref_name == 'main'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY_NAME }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Restore Dependencies
-      run: dotnet restore
+      - name: Add GitHub Packages source
+        run: |
+          dotnet nuget add source \
+            --name github \
+            --username ${{ github.repository_owner }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --store-password-in-clear-text \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
-    - name: Build Project
-      run: dotnet build --configuration Release --no-restore
+      - name: Restore dependencies
+        run: dotnet restore
 
-    - name: Test Project
-      run: dotnet test --configuration Release --no-build --verbosity normal
+      - name: Build project
+        run: dotnet build --configuration Release --no-restore
 
-    - name: Upload Build
-      uses: actions/upload-artifact@v3
-      with:
-        name: TwitchBot
-        path: |
-          ./bin/Release/net6.0/*.dll
-          ./bin/Release/net6.0/TwitchBot.deps.json
-          ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
-          ./bin/Release/net6.0/runtimes/*/lib/*/*.dll
+      - name: Test project
+        run: dotnet test --configuration Release --no-build --verbosity normal
 
-    - name: Download Build Artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: TwitchBot
-        path: ./artifacts
+      - name: Upload build
+        uses: actions/upload-artifact@v3
+        with:
+          name: TwitchBot
+          path: |
+            ./bin/Release/net6.0/*.dll
+            ./bin/Release/net6.0/TwitchBot.deps.json
+            ./bin/Release/net6.0/TwitchBot.runtimeconfig.json
+            ./bin/Release/net6.0/runtimes/*/lib/*/*.dll
 
-    - name: Extract Metadata for Docker
-      id: metadata
-      uses: docker/metadata-action@v4
-      with:
-        images: ${{ env.REGISTRY_NAME }}/${{ github.actor }}/twitchbot
-        flavor: latest=true
-        tags: |
-          type=ref,event=pr
-          type=ref,event=branch
-          type=semver,pattern={{major}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}.{{minor}}.{{patch}}
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: TwitchBot
+          path: ./artifacts
 
-    - name: Build & Push Docker Image
-      uses: docker/build-push-action@v3
-      with:
-        file: ./Dockerfile
-        context: ./artifacts
-        push: ${{ github.event_name != 'pull_request' }}
-        pull: true
-        tags: ${{ steps.metadata.outputs.tags }}
-        labels: ${{ steps.metadata.outputs.labels }}
+      - name: Create metadata for Docker image
+        id: metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY_NAME }}/${{ github.repository_owner }}/twitchbot
+          flavor: latest=true
+          tags: |
+            type=ref,event=pr
+            type=ref,event=branch
+            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+          labels: |
+              org.opencontainers.image.title=Twitch Bot
+              org.opencontainers.image.description=My Twitch integration & chat bot.
+              com.docker.extension.publisher-url={{ env.PUBLISHER_WEBSITE }}
 
-    - name: Bundle Build Artifacts
-      if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
-      run: |
-        cd ./artifacts
-        zip -r ../TwitchBot.zip $(find ./)
+      - name: Build & push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          push: ${{ github.event_name != 'pull_request' }}
+          file: ./Dockerfile
+          context: ./artifacts
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          no-cache: true
+          pull: true
 
-    - name: Create Release
-      if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
-      uses: softprops/action-gh-release@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        tag_name: ${{ github.ref_name }}
-        draft: true
-        files: ./TwitchBot.zip
-        body: |
-          ```
-          ${{ steps.metadata.outputs.tags }}
-          ```
+      - name: Bundle build artifacts
+        if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
+        run: |
+          cd ./artifacts
+          zip -r ../TwitchBot.zip $(find ./)
+
+      - name: Create draft release
+        if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: ./TwitchBot.zip
+          body: |
+            ```
+            ${{ steps.metadata.outputs.tags }}
+            ```

@@ -1,39 +1,30 @@
-# Start with ASP.NET Runtime v6 - https://hub.docker.com/_/microsoft-dotnet-aspnet
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+# Start from ASP.NET Core Runtime
+FROM ghcr.io/viral32111/aspnetcore:6.0
 
-# Regular user configuration
-ARG USER_ID=1000 \
-	USER_NAME=user \
-	USER_HOME=/home/user \
+# Configure directories & files
+ARG TWITCHBOT_DIRECTORY=/opt/twitch-bot \
+	TWITCHBOT_DATA_DIRECTORY=/var/lib/twitch-bot \
+	TWITCHBOT_CACHE_DIRECTORY=/var/cache/twitch-bot \
+	TWITCHBOT_CONFIG_FILE=/etc/twitch-bot.json
 
-# Paths configuration
-ARG DIRECTORY_BIN=/usr/local/twitch-bot \
-	DIRECTORY_DATA=/var/lib/twitch-bot \
-	DIRECTORY_CACHE=/var/cache/twitch-bot \
-	FILE_CONFIG=/etc/twitch-bot.json
+# Add artifacts from build
+COPY --chown=${USER_ID}:${USER_ID} ./ ${TWITCHBOT_DIRECTORY}
 
-# Disable .NET telemetry
-ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+# Setup required directories
+RUN mkdir --verbose --parents ${TWITCHBOT_DATA_DIRECTORY} ${TWITCHBOT_CACHE_DIRECTORY} && \
+	chown --changes --recursive ${USER_ID}:${USER_ID} ${TWITCHBOT_DATA_DIRECTORY} ${TWITCHBOT_CACHE_DIRECTORY}
 
-# Create directories & regular user
-RUN mkdir --verbose --parents ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE} && \
-	adduser --system --disabled-password --disabled-login --shell /usr/sbin/nologin --no-create-home --home ${USER_HOME} --gecos ${USER_NAME} --group --uid ${USER_ID} ${USER_NAME} && \
-	chown --changes --recursive ${USER_ID}:${USER_ID} ${USER_HOME} ${DIRECTORY_BIN} ${DIRECTORY_DATA} ${DIRECTORY_CACHE}
+# Initialize bot to create the configuration file
+RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${TWITCHBOT_CONFIG_FILE} && \
+	chown --changes --recursive ${USER_ID}:${USER_ID} ${TWITCHBOT_CONFIG_FILE}
 
-# Add build artifacts
-COPY --chown=${USER_ID}:${USER_ID} ./ ${DIRECTORY_BIN}/
-
-# Initialize to create configuration file
-RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${FILE_CONFIG} && \
-	chown --changes --recursive ${USER_ID}:${USER_ID} ${FILE_CONFIG}
-
-# Change to regular user & data directory
+# Switch to the regular user
 USER ${USER_ID}:${USER_ID}
-WORKDIR ${DIRECTORY_DATA}
 
-# Persist the data directory
-VOLUME ${DIRECTORY_DATA}
+# Switch to & persist the daa directory
+WORKDIR ${TWITCHBOT_DATA_DIRECTORY}
+VOLUME ${TWITCHBOT_DATA_DIRECTORY}
 
 # Start the bot when launched
-ENTRYPOINT [ "dotnet", "/usr/local/twitch-bot/TwitchBot.dll" ]
+ENTRYPOINT [ "dotnet", "/opt/twitch-bot/TwitchBot.dll" ]
 CMD [ "/etc/twitch-bot.json" ]
