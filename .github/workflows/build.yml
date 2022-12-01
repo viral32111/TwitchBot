@@ -111,6 +111,16 @@ jobs:
           no-cache: true
           pull: true
 
+      - name: Delete untagged Docker images
+        uses: snok/container-retention-policy@v1
+        with:
+          image-names: twitchbot
+          cut-off: 0 seconds ago UTC
+          keep-at-least: 1
+          untagged-only: true
+          account-type: personal
+          token: ${{ secrets.PAT_PACKAGES }}
+
       - name: Bundle build artifacts
         if: ${{ github.ref_type == 'tag' && github.event_name != 'pull_request' }}
         run: |
