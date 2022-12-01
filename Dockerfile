@@ -15,7 +15,7 @@ RUN mkdir --verbose --parents ${TWITCHBOT_DATA_DIRECTORY} ${TWITCHBOT_CACHE_DIRE
 	chown --changes --recursive ${USER_ID}:${USER_ID} ${TWITCHBOT_DATA_DIRECTORY} ${TWITCHBOT_CACHE_DIRECTORY}
 
 # Initialize bot to create the configuration file
-RUN dotnet ${DIRECTORY_BIN}/TwitchBot.dll --init ${TWITCHBOT_CONFIG_FILE} && \
+RUN dotnet ${TWITCHBOT_DIRECTORY}/TwitchBot.dll --init ${TWITCHBOT_CONFIG_FILE} && \
 	chown --changes --recursive ${USER_ID}:${USER_ID} ${TWITCHBOT_CONFIG_FILE}
 
 # Switch to the regular user
