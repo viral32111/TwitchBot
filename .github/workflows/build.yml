@@ -98,7 +98,7 @@ jobs:
           labels: |
               org.opencontainers.image.title=Twitch Bot
               org.opencontainers.image.description=My Twitch integration & chat bot.
-              com.docker.extension.publisher-url={{ env.PUBLISHER_WEBSITE }}
+              com.docker.extension.publisher-url=${{ env.PUBLISHER_WEBSITE }}
 
       - name: Build & push Docker image
         uses: docker/build-push-action@v3
