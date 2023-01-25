@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.Reflection;
+using System;
 
 // https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets
 
@@ -15,7 +16,9 @@ namespace TwitchBot {
 
 			IConfigurationRoot secrets = configurationBuilder.Build();
 
-			TwitchOAuthSecret = secrets.GetValue<string>( "AppClientSecret" );
+			string? twitchOAuthSecret = secrets.GetValue<string>( "AppClientSecret" );
+			if ( twitchOAuthSecret == null ) throw new Exception( "Missing Twitch OAuth Secret" );
+			TwitchOAuthSecret = twitchOAuthSecret;
 
 			PrintDeprecationNotice( secrets, "AppClientIdentifier" );
 			PrintDeprecationNotice( secrets, "AccountName" );
