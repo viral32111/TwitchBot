@@ -14,7 +14,7 @@ namespace TwitchBot {
 		// Twitch OAuth
 		public static readonly string TwitchOAuthBaseURL;
 		public static readonly string TwitchOAuthIdentifier;
-		public static readonly string TwitchOAuthSecret;
+		public static readonly string? TwitchOAuthSecret;
 		public static readonly string TwitchOAuthRedirectURL;
 		public static readonly string[] TwitchOAuthScopes;
 
@@ -76,7 +76,7 @@ namespace TwitchBot {
 				// Resave the file to save any new properties that might have been added
 				configuration.SaveToFile();
 
-				// Otherwise, create it with default values in the above file path
+			// Otherwise, create it with default values in the above file path
 			} catch ( FileNotFoundException ) {
 				configuration = JsonExtensions.CreateNewFile( configFilePath, defaultConfiguration );
 				Log.Info( "Created default configuration in file: '{0}'.", configFilePath );
@@ -129,10 +129,10 @@ namespace TwitchBot {
 				RedisUserPassword = configuration.NestedGet<string>( "redis.user.password" );
 
 				// Fallback to the user secrets store if the Twitch OAuth secret is not in the configuration file
-				string? twitchOAuthSecret = configuration.NestedGet( "twitch.oauth.secret" )?.AsValue().ToString();
-				TwitchOAuthSecret = !string.IsNullOrEmpty( twitchOAuthSecret ) ? twitchOAuthSecret : UserSecrets.TwitchOAuthSecret;
+				string? twitchOAuthSecretConfig = configuration.NestedGet( "twitch.oauth.secret" )?.AsValue().ToString();
+				TwitchOAuthSecret = !string.IsNullOrEmpty( twitchOAuthSecretConfig ) ? twitchOAuthSecretConfig : UserSecrets.TwitchOAuthSecret;
 
-				// Fail if any errors happen while attempting to populate the configuration properties
+			// Fail if any errors happen while attempting to populate the configuration properties
 			} catch ( Exception exception ) {
 				Log.Error( exception.Message );
 				Environment.Exit( 1 );

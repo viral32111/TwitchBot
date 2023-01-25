@@ -141,6 +141,8 @@ namespace TwitchBot.Twitch.OAuth {
 
 		private static async Task<UserAccessToken> GrantAuthorization( string authorizationCode, string redirectUri ) {
 
+			if ( string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) throw new Exception( "Twitch OAuth Secret is missing" );
+
 			HttpResponseMessage grantResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
 				{ "client_id", Config.TwitchOAuthIdentifier },
 				{ "client_secret", Config.TwitchOAuthSecret },
@@ -179,6 +181,8 @@ namespace TwitchBot.Twitch.OAuth {
 		}
 
 		public async Task DoRefresh() {
+
+			if ( string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) throw new Exception( "Twitch OAuth Secret is missing" );
 
 			HttpResponseMessage refreshResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
 				{ "client_id", Config.TwitchOAuthIdentifier },

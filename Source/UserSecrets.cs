@@ -7,7 +7,7 @@ using System;
 namespace TwitchBot {
 	public static class UserSecrets {
 
-		public static readonly string TwitchOAuthSecret;
+		public static readonly string? TwitchOAuthSecret;
 
 		static UserSecrets() {
 
@@ -16,9 +16,7 @@ namespace TwitchBot {
 
 			IConfigurationRoot secrets = configurationBuilder.Build();
 
-			string? twitchOAuthSecret = secrets.GetValue<string>( "AppClientSecret" );
-			if ( twitchOAuthSecret == null ) throw new Exception( "Missing Twitch OAuth Secret" );
-			TwitchOAuthSecret = twitchOAuthSecret;
+			TwitchOAuthSecret = secrets.GetValue<string>( "AppClientSecret" );
 
 			PrintDeprecationNotice( secrets, "AppClientIdentifier" );
 			PrintDeprecationNotice( secrets, "AccountName" );
