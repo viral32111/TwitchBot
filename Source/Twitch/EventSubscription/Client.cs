@@ -94,7 +94,7 @@ namespace TwitchBot.Twitch.EventSubscription {
 
 					// Parse any text as JSON & process it
 					case WebSocketMessageType.Text:
-						await ProcessMessage( JsonNode.Parse( receiveBufferText )!.AsObject() );
+						ProcessMessage( JsonNode.Parse( receiveBufferText )!.AsObject() );
 						break;
 
 					// Complain if we receive binary data
@@ -116,7 +116,7 @@ namespace TwitchBot.Twitch.EventSubscription {
 		}
 
 		// Processes the websocket messages that we care about
-		private async Task ProcessMessage( JsonObject message ) {
+		private void ProcessMessage( JsonObject message ) {
 
 			// Extract useful data about this message
 			string messageIdentifier = message[ "metadata" ]![ "message_id" ]!.GetValue<string>();
@@ -150,7 +150,7 @@ namespace TwitchBot.Twitch.EventSubscription {
 				case "notification":
 					string subscriptionType = messageData[ "subscription" ]![ "type" ]!.GetValue<string>();
 					JsonObject eventData = messageData[ "event" ]!.AsObject();
-					await ProcessNotification( subscriptionType, eventData );
+					ProcessNotification( subscriptionType, eventData );
 					break;
 
 				// Warn us about any other unhandled messages
@@ -166,7 +166,7 @@ namespace TwitchBot.Twitch.EventSubscription {
 		}
 
 		// Processes notifications for events we've subscribed to
-		private async Task ProcessNotification( string subscriptionType, JsonObject eventData ) {
+		private void ProcessNotification( string subscriptionType, JsonObject eventData ) {
 			Log.Debug( "Processing EventSub notification of type '{0}' with data '{1}'", subscriptionType, eventData.ToJsonString() );
 
 			if ( subscriptionType == SubscriptionType.StreamStart ) {
