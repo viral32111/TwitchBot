@@ -104,7 +104,7 @@ jobs:
               com.docker.extension.publisher-url=${{ env.PUBLISHER_WEBSITE }}
 
       - name: Build & push Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./Dockerfile
