@@ -146,7 +146,7 @@ jobs:
       packages: write
     steps:
       - name: Delete untagged Docker images
-        uses: snok/container-retention-policy@v1
+        uses: snok/container-retention-policy@v2
         continue-on-error: true
         with:
           image-names: twitchbot
