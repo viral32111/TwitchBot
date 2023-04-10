@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - 'Source/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/ci.yml'
+    branches:
+      - '**'
+    tags:
+      - '*.*.*'
+  workflow_dispatch:
+
+env:
+  ARTIFACT_NAME: TwitchBot
+  DOCKER_IMAGE_NAME: twitchbot
+  DOCKER_REGISTRY_DOMAIN: ghcr.io
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.x
+
+      - name: Add GitHub Packages source
+        run: dotnet nuget add source --name github --username ${{ github.repository_owner }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./bin/Release/net7.0/*
+
+  docker:
+    name: Docker
+    runs-on: ubuntu-22.04
+    needs: build-test
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64
+          driver-opts: image=moby/buildkit:v0.10.6
+
+      - name: Login to GitHub Container Registry
+        if: ${{ github.event_name == 'push' && github.event.pull_request == null && !startsWith( github.ref, 'refs/heads/dependabot/' ) }}
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY_DOMAIN }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./artifact/
+
+      - name: Create metadata for Docker image
+        id: metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.DOCKER_REGISTRY_DOMAIN }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}
+          flavor: latest=true
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+          labels: |
+              org.opencontainers.image.title=Twitch Bot
+              org.opencontainers.image.description=My Twitch integration & chat bot.
+              com.docker.extension.publisher-url=https://viral32111.com
+
+      - name: Build & push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          push: ${{ github.event_name == 'push' && github.event.pull_request == null && !startsWith( github.ref, 'refs/heads/dependabot/' ) }}
+          file: ./Dockerfile
+          context: ./artifact/
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          no-cache: true
+          pull: true
+
+      - name: Delete untagged Docker images
+        if: ${{ github.event_name == 'push' && github.event.pull_request == null && !startsWith( github.ref, 'refs/heads/dependabot/' ) }}
+        uses: snok/container-retention-policy@v2
+        with:
+          image-names: ${{ env.DOCKER_IMAGE_NAME }}
+          cut-off: 0 seconds ago UTC
+          keep-at-least: 0
+          untagged-only: true
+          account-type: personal
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN_PACKAGES }}
+
+  release:
+    name: Release
+    runs-on: ubuntu-22.04
+    needs: docker
+    if: ${{ github.event_name == 'push' && github.event.pull_request == null && !startsWith( github.ref, 'refs/heads/dependabot/' ) && github.ref_type == 'tag' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./artifact/
+
+      - name: Bundle build artifact
+        run: |
+          cd ./artifact/
+          zip -r ../${{ env.ARTIFACT_NAME }}.zip $(find ./)
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          body: ${{ github.ref_name }}
+          files: ./${{ env.ARTIFACT_NAME }}.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
