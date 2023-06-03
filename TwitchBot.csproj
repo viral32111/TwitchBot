@@ -28,7 +28,7 @@
 	</ItemGroup>
   
 	<ItemGroup>
-	  <PackageReference Include="MongoDB.Driver" Version="2.19.1" />
+	  <PackageReference Include="MongoDB.Driver" Version="2.19.2" />
 	  <PackageReference Include="MySql.Data" Version="8.0.33" />
 	  <PackageReference Include="StackExchange.Redis" Version="2.6.111" />
 	  <PackageReference Include="viral32111.JsonExtensions" Version="0.2.0" />
