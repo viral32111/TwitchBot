@@ -1,8 +1,15 @@
 # Twitch Bot
 
-This is my Twitch integration and chat bot, primarily made for [Rawreltv](https://www.twitch.tv/rawreltv).
+[![CI](https://github.com/viral32111/TwitchBot/actions/workflows/ci.yml/badge.svg)](https://github.com/viral32111/TwitchBot/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/viral32111/TwitchBot/actions/workflows/codeql.yml/badge.svg)](https://github.com/viral32111/TwitchBot/actions/workflows/codeql.yml)
+![GitHub tag (with filter)](https://img.shields.io/github/v/tag/viral32111/TwitchBot?label=Latest)
+![GitHub repository size](https://img.shields.io/github/repo-size/viral32111/TwitchBot?label=Size)
+![GitHub release downloads](https://img.shields.io/github/downloads/viral32111/TwitchBot/total?label=Downloads)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/viral32111/TwitchBot?label=Commits)
 
-## Running
+This is my Twitch integration and chat bot, made for [Rawreltv](https://www.twitch.tv/rawreltv).
+
+## 📥 Usage
 
 The recommended way to run this bot is by using the [Docker image](https://github.com/users/viral32111/packages/container/package/twitchbot). This image is automatically updated every time a commit is pushed.
 
@@ -16,7 +23,7 @@ docker run \
 	ghcr.io/viral32111/twitchbot:latest
 ```
 
-### Configuration
+### ⚙️ Configuration
 
 The configuration file is where you should specify Twitch application credentials, channel names, etc.
 
@@ -42,14 +49,14 @@ The location of this directory can be changed in the configuration file. The def
  * Windows: `%TEMP%/TwitchBot`
  * Linux: `/var/cache/twitch-bot`
 
-### Development
+### 🏗️ Development
 
 When running during development, it is preferred to keep secrets in the [.NET user secrets store](https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets).
 
 These secrets can be set using the `dotnet user-secrets set` command. The following secrets are required:
  * `AppClientSecret` should be your Twitch application's client secret.
 
-## License
+## ⚖️ License
 
 Copyright (C) 2022-2023 [viral32111](https://viral32111.com).
 
