@@ -4,12 +4,12 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 /* Global User Tags:
- user-id=675961583
- display-name=viral32111_
- color=#FF0000
- badge-info=
- emotes=
- emote-sets=0,300374282
+user-id=675961583
+display-name=viral32111_
+color=#FF0000
+badge-info=
+emotes=
+emote-sets=0,300374282
 */
 
 namespace TwitchBot.Twitch;

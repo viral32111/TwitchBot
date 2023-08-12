@@ -7,13 +7,13 @@ using System.Collections.Generic;
 using MongoDB.Driver;
 
 /* Channel Tags:
- room-id=127154290
- emote-only=0
- followers-only=-1
- r9k=0
- rituals=0
- slow=10
- subs-only=0
+room-id=127154290
+emote-only=0
+followers-only=-1
+r9k=0
+rituals=0
+slow=10
+subs-only=0
 */
 
 namespace TwitchBot.Twitch;
@@ -105,9 +105,7 @@ public class Channel {
 
 	}
 
-	public override string ToString() {
-		return $"'{DisplayName}' ({Identifier})";
-	}
+	public override string ToString() => $"'{ DisplayName }' ({ Identifier })";
 
 	// Updates the dynamic data from the IRC message tags
 	public void UpdateProperties( viral32111.InternetRelayChat.Message ircMessage ) {

@@ -5,8 +5,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 
 using MongoDB.Driver;
 
@@ -20,7 +18,7 @@ namespace TwitchBot;
 public class Program {
 
 	// Windows-only
-	[DllImport( "Kernel32" )]
+	[ DllImport( "Kernel32" ) ]
 	private static extern bool SetConsoleCtrlHandler( EventHandler handler, bool add );
 	private delegate bool EventHandler( CtrlType signal );
 	private static EventHandler? consoleCtrlHandler;

@@ -137,8 +137,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 
 		// Update a channel user in state & fire the channel user update event, if we are being informed of a channel user update
 		} else if ( e.Message.IsFromSystem() && e.Message.Command == Command.UserState && e.Message.Middle != null && e.Message.Tags.Count > 0 ) {
-			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] );
-			if ( channel == null ) throw new Exception( "Cannot update channel user because the channel is unknown" );
+			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] ) ?? throw new Exception( "Cannot update channel user because the channel is unknown" );
 
 			OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( e.Message, channel ) );
 

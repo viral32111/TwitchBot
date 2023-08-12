@@ -1,13 +1,13 @@
 ﻿using System;
 
 /* Channel User Tags:
- badges=moderator/1
- mod=1
- subscriber=0
- turbo=0
- user-type=mod
- first-msg=0
- returning-chatter=0
+badges=moderator/1
+mod=1
+subscriber=0
+turbo=0
+user-type=mod
+first-msg=0
+returning-chatter=0
 */
 
 namespace TwitchBot.Twitch;
@@ -39,9 +39,7 @@ public class ChannelUser {
 
 	}
 
-	public override string ToString() {
-		return $"'{Global.DisplayName}' ({Global.Identifier})";
-	}
+	public override string ToString() => $"'{ Global.DisplayName }' ({ Global.Identifier })";
 
 	// Updates the dynamic data from the IRC message tags
 	public void UpdateProperties( viral32111.InternetRelayChat.Message ircMessage ) {

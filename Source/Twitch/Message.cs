@@ -2,8 +2,8 @@
 using System.Threading.Tasks;
 
 /* Message Tags:
- id=f93c6fec-e157-4224-8035-1b6f148a1ff8
- tmi-sent-ts=1667397167274
+id=f93c6fec-e157-4224-8035-1b6f148a1ff8
+tmi-sent-ts=1667397167274
 */
 
 namespace TwitchBot.Twitch;
@@ -45,9 +45,7 @@ public class Message {
 		return Guid.Parse( messageIdentifier );
 	}
 
-	public override string ToString() {
-		return $"'{Content}' ({Identifier})";
-	}
+	public override string ToString() => $"'{ Content }' ({ Identifier })";
 
 	// Sends a reply to this message
 	public async Task Reply( string content ) => await Author.Channel.SendMessage( content, replyTo: this );
