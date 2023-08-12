@@ -1,0 +1,47 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build (Debug)",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"--configuration", "Debug",
+				"--nologo"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build (Release)",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"--configuration", "Release",
+				"--nologo"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Test",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"test",
+				"--nologo"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Clean",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"clean",
+				"--nologo"
+			],
+			"problemMatcher": "$msCompile"
+		}
+	]
+}

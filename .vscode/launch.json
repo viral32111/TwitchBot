@@ -1,0 +1,33 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Launch (Debug)",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "Build (Debug)",
+			"program": "${workspaceFolder}/bin/Debug/net7.0/TwitchBot.dll",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"console": "internalConsole",
+			"stopAtEntry": false,
+			"logging": {
+				"moduleLoad": false
+			}
+		},
+		{
+			"name": "Launch (Release)",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "Build (Release)",
+			"program": "${workspaceFolder}/bin/Debug/net7.0/TwitchBot.dll",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"console": "internalConsole",
+			"stopAtEntry": false,
+			"logging": {
+				"moduleLoad": false,
+			}
+		}
+	]
+}
