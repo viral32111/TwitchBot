@@ -1,17 +1,17 @@
 ﻿// Enumerations for Twitch-specific IRC capabilities
 // https://dev.twitch.tv/docs/irc/capabilities
 
-namespace TwitchBot.Twitch {
-	public static class Capability {
+namespace TwitchBot.Twitch;
 
-		// Lets your bot send PRIVMSG messages that include Twitch chat commands and receive Twitch-specific IRC messages.
-		public static readonly string Commands = "twitch.tv/commands";
+public static class Capability {
 
-		// Lets your bot receive JOIN and PART messages when users join and leave the chat room.
-		public static readonly string Membership = "twitch.tv/membership";
+	// Lets your bot send PRIVMSG messages that include Twitch chat commands and receive Twitch-specific IRC messages.
+	public static readonly string Commands = "twitch.tv/commands";
 
-		// Adds additional metadata to the command and membership messages.
-		public static readonly string Tags = "twitch.tv/tags";
+	// Lets your bot receive JOIN and PART messages when users join and leave the chat room.
+	public static readonly string Membership = "twitch.tv/membership";
 
-	}
+	// Adds additional metadata to the command and membership messages.
+	public static readonly string Tags = "twitch.tv/tags";
+
 }
