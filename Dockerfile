@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Start from ASP.NET Core Runtime
 FROM ghcr.io/viral32111/aspnetcore:7.0
 

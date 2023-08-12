@@ -43,10 +43,10 @@ jobs:
         run: dotnet restore
 
       - name: Build project
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --nologo --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        run: dotnet test --nologo --configuration Release --no-build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
@@ -118,6 +118,7 @@ jobs:
 
       - name: Delete old Docker images
         if: ${{ github.event_name != 'pull_request' && !startsWith( github.ref_name, 'dependabot/' ) }}
+        continue-on-error: true
         uses: snok/container-retention-policy@v2
         with:
           image-names: ${{ env.DOCKER_IMAGE_NAME }}
