@@ -42,7 +42,7 @@ public class Channel {
 	private readonly Client Client;
 
 	// Creates a channel from an IRC message
-	public Channel( InternetRelayChat.Message ircMessage, Client client ) {
+	public Channel( viral32111.InternetRelayChat.Message ircMessage, Client client ) {
 
 		// Set the static data
 		Identifier = ExtractIdentifier( ircMessage );
@@ -81,7 +81,7 @@ public class Channel {
 	}
 
 	// Extracts the channel identifier from the IRC message tags
-	public static int ExtractIdentifier( InternetRelayChat.Message ircMessage ) {
+	public static int ExtractIdentifier( viral32111.InternetRelayChat.Message ircMessage ) {
 		if ( !ircMessage.Tags.TryGetValue( "room-id", out string? channelIdentifier ) || channelIdentifier == null ) throw new Exception( "IRC message does not contain an identifier tag for this channel" );
 		return int.Parse( channelIdentifier );
 	}
@@ -110,7 +110,7 @@ public class Channel {
 	}
 
 	// Updates the dynamic data from the IRC message tags
-	public void UpdateProperties( InternetRelayChat.Message ircMessage ) {
+	public void UpdateProperties( viral32111.InternetRelayChat.Message ircMessage ) {
 
 		// This isn't always there
 		if ( ircMessage.Tags.TryGetValue( "emote-only", out string? isEmoteOnly ) && !string.IsNullOrWhiteSpace( isEmoteOnly ) ) IsEmoteOnly = isEmoteOnly == "1";
@@ -133,7 +133,7 @@ public class Channel {
 	}
 
 	// Sends a chat message, can be as a reply to another message
-	public async Task SendMessage( string message, Message? replyTo = null ) => await Client.SendAsync( InternetRelayChat.Command.PrivateMessage,
+	public async Task SendMessage( string message, Message? replyTo = null ) => await Client.SendAsync( viral32111.InternetRelayChat.Command.PrivateMessage,
 		middle: $"#{Name}",
 		parameters: message,
 		tags: replyTo != null ? new() {

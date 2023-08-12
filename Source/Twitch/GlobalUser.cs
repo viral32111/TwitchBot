@@ -30,7 +30,7 @@ public class GlobalUser {
 	public string[] EmoteSets { get; private set; } = Array.Empty<string>();
 
 	// Creates a global user from an IRC message
-	public GlobalUser( InternetRelayChat.Message ircMessage ) {
+	public GlobalUser( viral32111.InternetRelayChat.Message ircMessage ) {
 		Identifier = ExtractIdentifier( ircMessage );
 		UpdateProperties( ircMessage );
 	}
@@ -43,7 +43,7 @@ public class GlobalUser {
 	}
 
 	// Extracts the user identifier from the IRC message tags
-	public static int ExtractIdentifier( InternetRelayChat.Message ircMessage ) {
+	public static int ExtractIdentifier( viral32111.InternetRelayChat.Message ircMessage ) {
 		if ( !ircMessage.Tags.TryGetValue( "user-id", out string? userIdentifier ) || userIdentifier == null ) throw new Exception( "IRC message does not contain an identifier tag for this global user" );
 		return int.Parse( userIdentifier );
 	}
@@ -72,7 +72,7 @@ public class GlobalUser {
 	}
 
 	// Updates the dynamic data from the IRC message tags
-	public void UpdateProperties( InternetRelayChat.Message ircMessage ) {
+	public void UpdateProperties( viral32111.InternetRelayChat.Message ircMessage ) {
 		if ( !ircMessage.Tags.TryGetValue( "display-name", out string? displayName ) || string.IsNullOrWhiteSpace( displayName ) ) throw new Exception( "IRC message does not contain a display name tag for this global user" );
 		DisplayName = displayName;
 		LoginName = displayName.ToLower();

@@ -36,7 +36,7 @@ public static class State {
 		return channel;
 	}
 
-	public static Channel UpdateChannel( InternetRelayChat.Message ircMessage, Client client ) {
+	public static Channel UpdateChannel( viral32111.InternetRelayChat.Message ircMessage, Client client ) {
 		int identifier = Channel.ExtractIdentifier( ircMessage );
 
 		if ( Channels.TryGetValue( identifier, out Channel? channel ) && channel != null ) {
@@ -65,7 +65,7 @@ public static class State {
 		return globalUser;
 	}
 
-	public static GlobalUser UpdateGlobalUser( InternetRelayChat.Message ircMessage ) {
+	public static GlobalUser UpdateGlobalUser( viral32111.InternetRelayChat.Message ircMessage ) {
 		int identifier = GlobalUser.ExtractIdentifier( ircMessage );
 
 		if ( GlobalUsers.TryGetValue( identifier, out GlobalUser? globalUser ) && globalUser != null ) {
@@ -85,7 +85,7 @@ public static class State {
 
 	/*********************************************************************************************/
 
-	public static ChannelUser UpdateChannelUser( InternetRelayChat.Message ircMessage, Channel channel ) {
+	public static ChannelUser UpdateChannelUser( viral32111.InternetRelayChat.Message ircMessage, Channel channel ) {
 
 		// USERSTATE updates seem to never contain a user-id IRC message tag, so we can't use GlobalUser.ExtractIdentifier()
 		if ( !ircMessage.Tags.TryGetValue( "display-name", out string? displayName ) || string.IsNullOrWhiteSpace( displayName ) ) throw new Exception( "Cannot possibly update a channel user without their display name IRC message tag" );

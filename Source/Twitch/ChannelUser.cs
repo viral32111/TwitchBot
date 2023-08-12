@@ -28,7 +28,7 @@ public class ChannelUser {
 	public readonly Channel Channel;
 
 	// Creates a channel user (and thus global user) from an IRC message
-	public ChannelUser( InternetRelayChat.Message ircMessage, GlobalUser globalUser, Channel channel ) {
+	public ChannelUser( viral32111.InternetRelayChat.Message ircMessage, GlobalUser globalUser, Channel channel ) {
 
 		// Set relevant data
 		Global = globalUser;
@@ -44,7 +44,7 @@ public class ChannelUser {
 	}
 
 	// Updates the dynamic data from the IRC message tags
-	public void UpdateProperties( InternetRelayChat.Message ircMessage ) {
+	public void UpdateProperties( viral32111.InternetRelayChat.Message ircMessage ) {
 
 		Global.UpdateProperties( ircMessage );
 

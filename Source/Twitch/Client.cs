@@ -4,6 +4,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
+using viral32111.InternetRelayChat;
+
 // A client for connecting to Twitch chat
 // https://dev.twitch.tv/docs/irc
 
@@ -21,17 +23,13 @@ using System.Collections.Generic;
 
 namespace TwitchBot.Twitch;
 
-public class Client : InternetRelayChat.Client {
+public class Client : viral32111.InternetRelayChat.Client {
 
 	// Regular expression for matching the "Your Host" command
 	private readonly Regex hostPattern = new( @"^Your host is (?'host'.+)$" );
 
 	// Ourselves
 	public GlobalUser? User;
-
-	// Event that runs after we have opened a connection to the server
-	public new delegate Task OnOpenHandler( Client client );
-	public new event OnOpenHandler? OnOpen;
 
 	// Event that runs after the client is ready
 	public delegate Task OnReadyHandler( Client client, GlobalUser user );
@@ -59,15 +57,14 @@ public class Client : InternetRelayChat.Client {
 
 	// Constructor to register event handlers
 	public Client() {
-		OnMessage += ProcessMessage;
-		base.OnOpen += OnBaseOpen;
+		MessagedEvent += ProcessMessage;
 	}
 
 	// Request capabilities for this connection
 	public async Task RequestCapabilities( string[] desiredCapabilities ) {
 
 		// Send the capabilities request, and wait for response message(s)
-		InternetRelayChat.Message responseMessage = await SendExpectResponseAsync( InternetRelayChat.Command.RequestCapabilities, string.Join( ' ', desiredCapabilities ) );
+		viral32111.InternetRelayChat.Message responseMessage = await SendWaitResponseAsync( viral32111.InternetRelayChat.Command.RequestCapabilities, string.Join( ' ', desiredCapabilities ) );
 
 		// Get a list of the granted capabilities from the response message
 		string[]? grantedCapabilities = responseMessage.Parameters?.Split( ' ' );
@@ -82,11 +79,11 @@ public class Client : InternetRelayChat.Client {
 	public async Task<bool> Authenticate( string accountName, string accessToken ) {
 
 		// Send the access token as the password, the account name as the username, and wait for a response
-		await SendAsync( InternetRelayChat.Command.Password, $"oauth:{accessToken}" );
-		InternetRelayChat.Message? responseMessage = await SendExpectResponseAsync( InternetRelayChat.Command.Nickname, accountName );
+		await SendAsync( new viral32111.InternetRelayChat.Message( viral32111.InternetRelayChat.Command.Password, parameters: $"oauth:{ accessToken }" ) );
+		viral32111.InternetRelayChat.Message? responseMessage = ( await SendWaitResponseAsync( new viral32111.InternetRelayChat.Message( viral32111.InternetRelayChat.Command.Nick, parameters: accountName ) ) )[ 0 ];
 
 		// Check the response to see if authentication was successful or failed
-		if ( responseMessage.IsFromSystem() && responseMessage.Command == InternetRelayChat.Command.Welcome ) return true;
+		if ( responseMessage.IsFromSystem() && responseMessage.Command == viral32111.InternetRelayChat.Command.Welcome ) return true;
 		else if ( responseMessage.IsFromSystem() && responseMessage.Command == Command.Notice && responseMessage.Parameters == "Login authentication failed" ) return false;
 		else throw new Exception( "Authentication response IRC message was neither successful or a failure" );
 
@@ -99,10 +96,10 @@ public class Client : InternetRelayChat.Client {
 		string channelName = $"#{channel.Name}";
 
 		// Request to join this channel & wait for a response
-		InternetRelayChat.Message responseMessage = await SendExpectResponseAsync( InternetRelayChat.Command.Join, middle: channelName );
+		viral32111.InternetRelayChat.Message responseMessage = await SendWaitResponseAsync( viral32111.InternetRelayChat.Command.Join, middle: channelName );
 
 		// Fire the channel join event if this message is for us, is about a join, and is for the channel we wanted to join
-		if ( responseMessage.IsAboutUser( User!.LoginName ) && responseMessage.Command == InternetRelayChat.Command.Join && responseMessage.Middle == channelName ) {
+		if ( responseMessage.IsAboutUser( User!.LoginName ) && responseMessage.Command == viral32111.InternetRelayChat.Command.Join && responseMessage.Middle == channelName ) {
 			// NOTE: Don't need to update global user or channel state here because this IRC message doesn't contain anything useful
 			OnGlobalUserJoinChannel?.Invoke( this, User!, channel, true );
 			return true;
@@ -112,17 +109,14 @@ public class Client : InternetRelayChat.Client {
 
 	}
 
-	// Run the connect event when the IRC client connects to the server
-	private async Task OnBaseOpen( InternetRelayChat.Client _ ) => OnOpen?.Invoke( this );
-
 	// Processes received messages
-	private async Task ProcessMessage( InternetRelayChat.Client _, InternetRelayChat.Message ircMessage ) {
+	private async void ProcessMessage( object sender, MessagedEventArgs e ) {
 
 		// Are we being told our host?
-		if ( ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.YourHost && ircMessage.Parameters != null ) {
+		if ( e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.YourHost && e.Message.Parameters != null ) {
 
 			// Run regular expression match on parameters to extract the hostname
-			Match hostMatch = hostPattern.Match( ircMessage.Parameters );
+			Match hostMatch = hostPattern.Match( e.Message.Parameters );
 			if ( !hostMatch.Success ) throw new Exception( "Failed to extract hostname from expected host IRC message" );
 
 			// Set the expected hostname to the match group
@@ -130,33 +124,33 @@ public class Client : InternetRelayChat.Client {
 			Log.Info( "The expected host is now: '{0}'", ExpectedHost );
 
 		// One day this might change, so let's display it...
-		} else if ( ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.MoTD && ircMessage.Parameters != null ) {
-			Log.Info( "MoTD: '{0}'", ircMessage.Parameters );
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.MoTD && e.Message.Parameters != null ) {
+			Log.Info( "MoTD: '{0}'", e.Message.Parameters );
 
 		// Update ourselves in state & fire the ready event, if we are being informed about our global self
-		} else if ( ircMessage.IsFromSystem() && ircMessage.Command == Command.GlobalUserState && ircMessage.Tags.Count > 0 ) {
-			OnReady?.Invoke( this, State.UpdateGlobalUser( ircMessage ) );
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == Command.GlobalUserState && e.Message.Tags.Count > 0 ) {
+			OnReady?.Invoke( this, State.UpdateGlobalUser( e.Message ) );
 
 		// Update a channel in state & fire the channel update event, if we are being informed of a channel update
-		} else if ( ircMessage.IsFromSystem() && ircMessage.Command == Command.RoomState && ircMessage.Middle != null && ircMessage.Tags.Count > 0 ) {
-			OnChannelUpdate?.Invoke( this, State.UpdateChannel( ircMessage, this ) );
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == Command.RoomState && e.Message.Middle != null && e.Message.Tags.Count > 0 ) {
+			OnChannelUpdate?.Invoke( this, State.UpdateChannel( e.Message, this ) );
 
 		// Update a channel user in state & fire the channel user update event, if we are being informed of a channel user update
-		} else if ( ircMessage.IsFromSystem() && ircMessage.Command == Command.UserState && ircMessage.Middle != null && ircMessage.Tags.Count > 0 ) {
-			Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == Command.UserState && e.Message.Middle != null && e.Message.Tags.Count > 0 ) {
+			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] );
 			if ( channel == null ) throw new Exception( "Cannot update channel user because the channel is unknown" );
 
-			OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( ircMessage, channel ) );
+			OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( e.Message, channel ) );
 
 		// Are we being informed about the users in a channel we just joined?
-		} else if ( ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.Names && ircMessage.Middle != null && ircMessage.Parameters != null ) {
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.Names && e.Message.Middle != null && e.Message.Parameters != null ) {
 
 			// Find the channel in state
-			Channel? channel = State.FindChannelByName( ircMessage.Middle[ ( ircMessage.Middle.LastIndexOf( '#' ) + 1 ).. ] );
+			Channel? channel = State.FindChannelByName( e.Message.Middle[ ( e.Message.Middle.LastIndexOf( '#' ) + 1 ).. ] );
 			if ( channel == null ) throw new Exception( "Received user list for an unknown channel" );
 
 			// Get a list of user names, excluding ourselves
-			string[] userNames = ircMessage.Parameters.Split( ' ' ).Where( userName => userName != User!.LoginName ).ToArray();
+			string[] userNames = e.Message.Parameters.Split( ' ' ).Where( userName => userName != User!.LoginName ).ToArray();
 
 			// Find each user in state, or create them using the API if they don't exist
 			List<GlobalUser> globalUsers = new();
@@ -174,47 +168,45 @@ public class Client : InternetRelayChat.Client {
 			}
 
 		// Did someone send a chat message in a channel?
-		} else if ( !ircMessage.IsFromSystem() && ircMessage.Command == InternetRelayChat.Command.PrivateMessage && ircMessage.Middle != null && ircMessage.Parameters != null && ircMessage.Tags.Count > 0 ) {
+		} else if ( !e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.PrivateMessage && e.Message.Middle != null && e.Message.Parameters != null && e.Message.Tags.Count > 0 ) {
 
 			// Update state for channel, channel user & message
-			Channel channel = State.UpdateChannel( ircMessage, this );
-			ChannelUser channelUser = State.UpdateChannelUser( ircMessage, channel );
-			Message message = State.InsertMessage( new( ircMessage, channelUser ) );
+			Channel channel = State.UpdateChannel( e.Message, this );
+			ChannelUser channelUser = State.UpdateChannelUser( e.Message, channel );
+			Message message = State.InsertMessage( new( e.Message, channelUser ) );
 
 			// Fire the chat message event
 			OnChannelChatMessage?.Invoke( this, message );
 
 		// Has a user (that isn't us) joined a channel's chat?
-		} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Join && ircMessage.Middle != null ) {
+		} else if ( !e.Message.IsFromSystem() && e.Message.User != null && e.Message.Command == viral32111.InternetRelayChat.Command.Join && e.Message.Middle != null ) {
 
 			// Find the channel in state
-			Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
-			if ( channel == null ) throw new Exception( "Received user join for an unknown channel" );
+			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] ) ?? throw new Exception( "Received user join for an unknown channel" );
 
 			// Find the global user in state, or create using the API if they don't exist
-			GlobalUser? globalUser = State.FindGlobalUserByName( ircMessage.User );
-			globalUser ??= await GlobalUser.FetchFromAPI( ircMessage.User );
+			GlobalUser? globalUser = State.FindGlobalUserByName( e.Message.User );
+			globalUser ??= await GlobalUser.FetchFromAPI( e.Message.User );
 
 			// Fire the user join channel event
 			OnGlobalUserJoinChannel?.Invoke( this, globalUser, channel, false );
 
 		// Has a user left a channel's chat?
-		} else if ( !ircMessage.IsFromSystem() && ircMessage.User != null && ircMessage.Command == InternetRelayChat.Command.Leave && ircMessage.Middle != null ) {
+		} else if ( !e.Message.IsFromSystem() && e.Message.User != null && e.Message.Command == viral32111.InternetRelayChat.Command.Leave && e.Message.Middle != null ) {
 
 			// Find the channel in state
-			Channel? channel = State.FindChannelByName( ircMessage.Middle[ 1.. ] );
-			if ( channel == null ) throw new Exception( "Received user leave for an unknown channel" );
+			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] ) ?? throw new Exception( "Received user leave for an unknown channel" );
 
 			// Find the global user in state, or create using the API if they don't exist
-			GlobalUser? globalUser = State.FindGlobalUserByName( ircMessage.User );
-			globalUser ??= await GlobalUser.FetchFromAPI( ircMessage.User );
+			GlobalUser? globalUser = State.FindGlobalUserByName( e.Message.User );
+			globalUser ??= await GlobalUser.FetchFromAPI( e.Message.User );
 
 			// Fire the user leave channel event
 			OnGlobalUserLeaveChannel?.Invoke( this, globalUser, channel );
 
 		// We don't know what to do with this message
 		} else {
-			Log.Warn( "Ignored IRC message: '{0}'", ircMessage.ToString() );
+			Log.Warn( "Ignored IRC message: '{0}'", e.Message.ToString() );
 		}
 
 	}

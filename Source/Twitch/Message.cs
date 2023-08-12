@@ -21,7 +21,7 @@ public class Message {
 	public readonly ChannelUser Author;
 
 	// Creates a message from an IRC message
-	public Message( InternetRelayChat.Message ircMessage, ChannelUser author ) {
+	public Message( viral32111.InternetRelayChat.Message ircMessage, ChannelUser author ) {
 
 		// Set relevant objects
 		Author = author;
@@ -40,7 +40,7 @@ public class Message {
 	}
 
 	// Extracts the channel identifier from the IRC message tags
-	public static Guid ExtractIdentifier( InternetRelayChat.Message ircMessage ) {
+	public static Guid ExtractIdentifier( viral32111.InternetRelayChat.Message ircMessage ) {
 		if ( !ircMessage.Tags.TryGetValue( "id", out string? messageIdentifier ) || messageIdentifier == null ) throw new Exception( "IRC message does not contain an identifier tag for this message" );
 		return Guid.Parse( messageIdentifier );
 	}

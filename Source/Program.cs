@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using TwitchBot.Database;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
+using viral32111.InternetRelayChat;
 
 namespace TwitchBot;
 
@@ -24,7 +25,7 @@ public class Program {
 	private delegate bool EventHandler( CtrlType signal );
 	private static EventHandler? consoleCtrlHandler;
 
-	private static readonly Client client = new();
+	private static readonly Twitch.Client client = new();
 	private static readonly Twitch.EventSubscription.Client eventSubClient = new();
 
 	// The main entry-point of the program
@@ -106,8 +107,8 @@ public class Program {
 		Log.Info( "I am {0}.", client.User.ToString() );
 
 		// Register event handlers for the Twitch client
-		client.OnSecureCommunication += OnSecureCommunication;
-		client.OnOpen += OnOpen;
+		client.SecuredEvent += OnSecureCommunication;
+		client.OpenedEvent += OnOpen;
 		client.OnReady += OnReady;
 		client.OnGlobalUserJoinChannel += OnGlobalUserJoinChannel;
 		client.OnGlobalUserLeaveChannel += OnGlobalUserLeaveChannel;
@@ -132,7 +133,7 @@ public class Program {
 
 		// Connect to Twitch chat
 		Log.Info( "Connecting to Twitch chat..." );
-		await client.ConnectAsync( Config.TwitchChatBaseURL );
+		await client.OpenAsync( Config.TwitchChatBaseURL );
 
 		// Keep the program running until we disconnect from Twitch chat
 		await client.WaitAsync();
@@ -140,7 +141,6 @@ public class Program {
 	}
 
 	private static bool OnApplicationExit( CtrlType signal ) {
-
 		//Log.Info( "Stopping Cloudflare Tunnel client..." );
 		//Cloudflare.StopTunnel();
 
@@ -166,21 +166,17 @@ public class Program {
 		Environment.Exit( 0 );
 
 		return false;
-
 	}
 
-	private static async Task OnSecureCommunication( InternetRelayChat.Client client, X509Certificate serverCertificate, SslProtocols protocol, CipherAlgorithmType cipherAlgorithm, int cipherStrength ) {
+	private static async void OnSecureCommunication( object sender, SecuredEventArgs e ) {
+		string protocolName = Shared.SslProtocolNames[ e.Protocol ];
+		string cipherName = Shared.CipherAlgorithmNames[ e.CipherAlgorithm ];
 
-		string protocolName = Shared.SslProtocolNames[ protocol ];
-		string cipherName = Shared.CipherAlgorithmNames[ cipherAlgorithm ];
-
-		Log.Debug( $"Established secure communication with '{serverCertificate.Subject}' (verified by '{serverCertificate.Issuer}' until {serverCertificate.GetExpirationDateString()}), using {protocolName} ({cipherName}-{cipherStrength})." );
-
+		Log.Debug( $"Established secure communication with '{ e.RemoteCertificate.Subject }' (verified by '{ e.RemoteCertificate.Issuer }' until { e.RemoteCertificate.GetExpirationDateString()}), using { protocolName } ({ cipherName }-{ e.CipherStrength })." );
 	}
 
 	// Fires after the underlying connection is ready (i.e. TLS established & receiving data)
-	private static async Task OnOpen( Client client ) {
-
+	private static async void OnOpen( object sender, OpenedEventArgs e ) {
 		if ( Shared.UserAccessToken == null ) throw new Exception( "Open event ran without previously fetching user access token" );
 
 		// Request all of Twitch's IRC capabilities
@@ -199,11 +195,10 @@ public class Program {
 			Log.Error( "Authentication failed!" );
 			await client.CloseAsync();
 		}
-
 	}
 
 	// Fires after authentication is successful & we have been informed about ourselves...
-	private static async Task OnReady( Client client, GlobalUser user ) {
+	private static async Task OnReady( Twitch.Client client, GlobalUser user ) {
 		Log.Info( "Ready as user {0}.", user.ToString() );
 
 		// Fetch the primary channel
@@ -225,17 +220,17 @@ public class Program {
 
 	// Fires when a global user joins a channel's chat
 	// NOTE: Can be ourselves after calling Client.JoinChannel() or other users on Twitch when they join the stream
-	private static async Task OnGlobalUserJoinChannel( Client client, GlobalUser globalUser, Channel channel, bool isMe ) {
+	private static async Task OnGlobalUserJoinChannel( Twitch.Client client, GlobalUser globalUser, Channel channel, bool isMe ) {
 		Log.Info( "Global user {0} joined channel {1}.", globalUser.ToString(), channel.ToString() );
 	}
 
 	// Fires when a global user leaves a channel's chat
-	private static async Task OnGlobalUserLeaveChannel( Client client, GlobalUser globalUser, Channel channel ) {
+	private static async Task OnGlobalUserLeaveChannel( Twitch.Client client, GlobalUser globalUser, Channel channel ) {
 		Log.Info( "Global user {0} left channel {1}.", globalUser.ToString(), channel.ToString() );
 	}
 
 	// Fires when a message in a channel's chat is received
-	private static async Task OnChannelChatMessage( Client client, Message message ) {
+	private static async Task OnChannelChatMessage( Twitch.Client client, Twitch.Message message ) {
 		Log.Info( "Channel user {0} in channel {1} said {2}.", message.Author.ToString(), message.Author.Channel.ToString(), message.ToString() );
 
 		// Run chat command, if this message is one
@@ -247,12 +242,12 @@ public class Program {
 	}
 
 	// Fires after a channel user is updated in state...
-	private static async Task OnChannelUserUpdate( Client client, ChannelUser user ) {
+	private static async Task OnChannelUserUpdate( Twitch.Client client, ChannelUser user ) {
 		Log.Info( "Channel user {0} updated.", user.Global.ToString() );
 	}
 
 	// Fires after a channel is updated in state...
-	private static async Task OnChannelUpdate( Client client, Channel channel ) {
+	private static async Task OnChannelUpdate( Twitch.Client client, Channel channel ) {
 		Log.Info( "Channel {0} updated.", channel.ToString() );
 	}
 
