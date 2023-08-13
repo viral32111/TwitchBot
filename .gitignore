@@ -399,3 +399,4 @@ FodyWeavers.xsd
 
 # Configuration file
 twitch-bot.json
+config.json

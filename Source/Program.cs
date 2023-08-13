@@ -8,14 +8,20 @@ using System.Runtime.InteropServices;
 
 using MongoDB.Driver;
 
+using viral32111.InternetRelayChat;
+
 using TwitchBot.Database;
 using TwitchBot.Twitch;
 using TwitchBot.Twitch.OAuth;
-using viral32111.InternetRelayChat;
 
 namespace TwitchBot;
 
 public class Program {
+
+	/// <summary>
+	/// Global instance of the configuration.
+	/// </summary>
+	public static Configuration Configuration { get; private set; } = new();
 
 	// Windows-only
 	[ DllImport( "Kernel32" ) ]
@@ -31,17 +37,20 @@ public class Program {
 
 		// Display application name and version
 		AssemblyName assemblyName = Assembly.GetExecutingAssembly().GetName();
-		Log.Info( "This is {0}, version {1}.{2}.{3}.", assemblyName.Name, assemblyName.Version?.Major, assemblyName.Version?.Minor, assemblyName.Version?.Build );
+		Log.Info( "Running version {1}.{2}.{3}.", assemblyName.Version?.Major, assemblyName.Version?.Minor, assemblyName.Version?.Build );
 
 		// Display directory paths for convenience
-		Log.Info( "Data directory is: '{0}'.", Config.DataDirectory );
-		Log.Info( "Cache directory is: '{0}'.", Config.CacheDirectory );
+		Log.Info( "Data directory is: '{0}'.", Configuration.DataDirectory );
+		Log.Info( "Cache directory is: '{0}'.", Configuration.CacheDirectory );
 
 		// Create required directories
 		Shared.CreateDirectories();
 
+		Environment.Exit( 1 );
+		return;
+
 		// Deprecation notice for the stream history file
-		string streamHistoryFile = Path.Combine( Config.DataDirectory, "stream-history.json" );
+		string streamHistoryFile = Path.Combine( Configuration.DataDirectory, "stream-history.json" );
 		if ( File.Exists( streamHistoryFile ) ) Log.Warn( "The stream history file ({0}) is deprecated, it can safely be deleted.", streamHistoryFile );
 
 		// Exit now if this launch was only to initialize files
