@@ -95,9 +95,9 @@ public static class Cloudflare {
 	// Gets the path to the executable file of the specific client version for Windows or Linux
 	public static string GetClientPath( string clientVersion ) {
 		if ( Shared.IsWindows() ) {
-			return Path.Combine( Config.CacheDirectory, $"cloudflared-{clientVersion}-windows-amd64.exe" );
+			return Path.Combine( Program.Configuration.CacheDirectory, $"cloudflared-{clientVersion}-windows-amd64.exe" );
 		} else {
-			return Path.Combine( Config.CacheDirectory, $"cloudflared-{clientVersion}-linux-amd64" );
+			return Path.Combine( Program.Configuration.CacheDirectory, $"cloudflared-{clientVersion}-linux-amd64" );
 		}
 	}
 

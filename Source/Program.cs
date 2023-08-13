@@ -46,9 +46,6 @@ public class Program {
 		// Create required directories
 		Shared.CreateDirectories();
 
-		Environment.Exit( 1 );
-		return;
-
 		// Deprecation notice for the stream history file
 		string streamHistoryFile = Path.Combine( Configuration.DataDirectory, "stream-history.json" );
 		if ( File.Exists( streamHistoryFile ) ) Log.Warn( "The stream history file ({0}) is deprecated, it can safely be deleted.", streamHistoryFile );
@@ -61,20 +58,22 @@ public class Program {
 		}
 
 		// Ensure the OAuth identifier & secret exists
-		if ( string.IsNullOrEmpty( Config.TwitchOAuthIdentifier ) || string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) {
+		if ( string.IsNullOrWhiteSpace( Configuration.TwitchOAuthClientIdentifier ) || string.IsNullOrWhiteSpace( Configuration.TwitchOAuthClientSecret ) ) {
 			Console.WriteLine( "Could not load Twitch application Client ID and/or secret from the configuration file!" );
 			Environment.Exit( 1 );
 			return;
 		}
 
 		// Download the Cloudflare Tunnel client
-		if ( !Cloudflare.IsClientDownloaded( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum ) ) {
-			Log.Warn( "Cloudflare Tunnel client does not exist or is corrupt, downloading version {0}...", Config.CloudflareTunnelVersion );
-			await Cloudflare.DownloadClient( Config.CloudflareTunnelVersion, Config.CloudflareTunnelChecksum );
-			Log.Info( "Cloudflare Tunnel client downloaded to: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
+		/*
+		if ( !Cloudflare.IsClientDownloaded( Configuration.CloudflareTunnelVersion, Configuration.CloudflareTunnelChecksum ) ) {
+			Log.Warn( "Cloudflare Tunnel client does not exist or is corrupt, downloading version {0}...", Configuration.CloudflareTunnelVersion );
+			await Cloudflare.DownloadClient( Configuration.CloudflareTunnelVersion, Configuration.CloudflareTunnelChecksum );
+			Log.Info( "Cloudflare Tunnel client downloaded to: '{0}'.", Cloudflare.GetClientPath( Configuration.CloudflareTunnelVersion ) );
 		} else {
-			Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Config.CloudflareTunnelVersion ) );
+			Log.Info( "Using cached Cloudflare Tunnel client at: '{0}'.", Cloudflare.GetClientPath( Configuration.CloudflareTunnelVersion ) );
 		}
+		*/
 
 		// List all collections in MongoDB
 		List<string> databaseCollectionNames = await Mongo.Database.ListCollectionNames().ToListAsync();
@@ -82,8 +81,10 @@ public class Program {
 
 		// Open Redis connection
 		// TODO: What are we even using Redis for??
+		/*
 		await Redis.Open();
 		Log.Info( "Connected to Redis." );
+		*/
 
 		// Attempt to load an existing user access token from disk
 		try {
@@ -105,7 +106,7 @@ public class Program {
 
 		} catch ( FileNotFoundException ) {
 			Log.Warn( "User access token file does not exist, requesting fresh token..." );
-			Shared.UserAccessToken = await UserAccessToken.RequestAuthorization( Config.TwitchOAuthRedirectURL, Config.TwitchOAuthScopes );
+			Shared.UserAccessToken = await UserAccessToken.RequestAuthorization( Configuration.TwitchOAuthRedirectURL, Configuration.TwitchOAuthScopes );
 			Shared.UserAccessToken.Save( Shared.UserAccessTokenFilePath );
 		}
 
@@ -140,7 +141,7 @@ public class Program {
 
 		// Connect to Twitch chat
 		Log.Info( "Connecting to Twitch chat..." );
-		await client.OpenAsync( Config.TwitchChatBaseURL );
+		await client.OpenAsync( Configuration.TwitchChatAddress, Configuration.TwitchChatPort, true );
 
 		// Keep the program running until we disconnect from Twitch chat
 		await client.WaitAsync();
@@ -157,8 +158,10 @@ public class Program {
 		Log.Info( "Closed connection to the database." );*/
 
 		// Close Redis connection
+		/*
 		Redis.Close().Wait();
 		Log.Info( "Disconnected from Redis." );
+		*/
 
 		// Close the EventSub websocket connection
 		//Log.Info( "Closing EventSub websocket connection..." );
@@ -209,14 +212,14 @@ public class Program {
 		Log.Info( "Ready as user {0}.", user.ToString() );
 
 		// Fetch the primary channel
-		Channel primaryChannel = await Channel.FetchFromAPI( Config.TwitchChatPrimaryChannelIdentifier, client );
+		Channel primaryChannel = await Channel.FetchFromAPI( Configuration.TwitchPrimaryChannelIdentifier, client );
 
 		// Join the primary channel
 		Log.Info( "Joining primary channel {0}...", primaryChannel.ToString() );
 		if ( await client.JoinChannel( primaryChannel ) ) {
 			Log.Info( "Joined primary channel {0}.", primaryChannel.ToString() );
 
-			//await eventSubClient.ConnectAsync( Config.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
+			//await eventSubClient.ConnectAsync( Configuration.TwitchEventSubWebSocketURL, new( 0, 0, 10 ), CancellationToken.None );
 
 			// TODO: Start time streamed goal thing
 
@@ -262,7 +265,7 @@ public class Program {
 	private static async Task OnEventSubClientReady( Twitch.EventSubscription.Client eventSubClient ) {
 		Log.Info( "EventSub client is ready, our session identifier is '{0}'.", eventSubClient.SessionIdentifier );
 
-		Channel? channel = State.GetChannel( 127154290 ); // Just for testing
+		Channel? channel = State.GetChannel( Configuration.TwitchPrimaryChannelIdentifier );
 		if ( channel == null ) throw new Exception( "Cannot find channel" );
 
 		await eventSubClient.SubscribeForChannel( Twitch.EventSubscription.SubscriptionType.ChannelUpdate, channel );

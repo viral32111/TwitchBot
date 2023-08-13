@@ -59,7 +59,7 @@ public class UserAccessToken : AppAccessToken {
 		try {
 			scopes = storage.Get<string[]>( "scopes" );
 		} catch { // Backwards compatibility as old file never contained scopes
-			scopes = Config.TwitchOAuthScopes;
+			scopes = Program.Configuration.TwitchOAuthScopes;
 			isOldFile = true;
 		}
 
@@ -77,8 +77,8 @@ public class UserAccessToken : AppAccessToken {
 
 		string stateSecret = Shared.GenerateRandomString( 16 );
 
-		string authorizationUrl = QueryHelpers.AddQueryString( $"https://{Config.TwitchOAuthBaseURL}/authorize", new Dictionary<string, string?>() {
-			{ "client_id", Config.TwitchOAuthIdentifier },
+		string authorizationUrl = QueryHelpers.AddQueryString( $"https://{Program.Configuration.TwitchOAuthBaseURL}/authorize", new Dictionary<string, string?>() {
+			{ "client_id", Program.Configuration.TwitchOAuthClientIdentifier },
 			{ "force_verify", "true" },
 			{ "redirect_uri", redirectUri },
 			{ "response_type", "code" },
@@ -89,7 +89,7 @@ public class UserAccessToken : AppAccessToken {
 
 		Log.Info( "Waiting for the authorization to complete..." );
 		string? authorizationCode = null;
-		await WebServer.ListenFor( Config.TwitchOAuthRedirectURL, async ( HttpListenerContext context ) => {
+		await WebServer.ListenFor( Program.Configuration.TwitchOAuthRedirectURL, async ( HttpListenerContext context ) => {
 
 			NameValueCollection collection = HttpUtility.ParseQueryString( context.Request!.Url!.Query );
 
@@ -143,11 +143,11 @@ public class UserAccessToken : AppAccessToken {
 
 	private static async Task<UserAccessToken> GrantAuthorization( string authorizationCode, string redirectUri ) {
 
-		if ( string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) throw new Exception( "Twitch OAuth Secret is missing" );
+		if ( string.IsNullOrEmpty( Program.Configuration.TwitchOAuthClientSecret ) ) throw new Exception( "Twitch OAuth Secret is missing" );
 
-		HttpResponseMessage grantResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
-			{ "client_id", Config.TwitchOAuthIdentifier },
-			{ "client_secret", Config.TwitchOAuthSecret },
+		HttpResponseMessage grantResponse = await Shared.httpClient.PostAsync( $"https://{Program.Configuration.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+			{ "client_id", Program.Configuration.TwitchOAuthClientIdentifier },
+			{ "client_secret", Program.Configuration.TwitchOAuthClientSecret },
 			{ "code", authorizationCode },
 			{ "grant_type", "authorization_code" },
 			{ "redirect_uri", redirectUri },
@@ -184,11 +184,11 @@ public class UserAccessToken : AppAccessToken {
 
 	public async Task DoRefresh() {
 
-		if ( string.IsNullOrEmpty( Config.TwitchOAuthSecret ) ) throw new Exception( "Twitch OAuth Secret is missing" );
+		if ( string.IsNullOrEmpty( Program.Configuration.TwitchOAuthClientSecret ) ) throw new Exception( "Twitch OAuth Secret is missing" );
 
-		HttpResponseMessage refreshResponse = await Shared.httpClient.PostAsync( $"https://{Config.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
-			{ "client_id", Config.TwitchOAuthIdentifier },
-			{ "client_secret", Config.TwitchOAuthSecret },
+		HttpResponseMessage refreshResponse = await Shared.httpClient.PostAsync( $"https://{Program.Configuration.TwitchOAuthBaseURL}/token", new FormUrlEncodedContent( new Dictionary<string, string>() {
+			{ "client_id", Program.Configuration.TwitchOAuthClientIdentifier },
+			{ "client_secret", Program.Configuration.TwitchOAuthClientSecret },
 			{ "grant_type", "refresh_token" },
 			{ "refresh_token", Refresh },
 		} ) );

@@ -44,7 +44,7 @@ public class AppAccessToken {
 	public async Task<bool> Validate() {
 
 		Shared.httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "OAuth", Access );
-		HttpResponseMessage validateResponse = await Shared.httpClient.GetAsync( $"https://{Config.TwitchOAuthBaseURL}/validate" );
+		HttpResponseMessage validateResponse = await Shared.httpClient.GetAsync( $"https://{Program.Configuration.TwitchOAuthBaseURL}/validate" );
 
 		//Stream responseStream = await validateResponse.Content.ReadAsStreamAsync();
 		//JsonDocument responseDocument = await JsonDocument.ParseAsync( responseStream );

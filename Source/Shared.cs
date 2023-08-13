@@ -18,7 +18,7 @@ public static class Shared {
 	public static readonly HttpClient httpClient = new();
 
 	public static UserAccessToken? UserAccessToken;
-	public static readonly string UserAccessTokenFilePath = Path.Combine( Config.DataDirectory, "UserAccessToken.json" );
+	public static readonly string UserAccessTokenFilePath = Path.Combine( Program.Configuration.DataDirectory, "UserAccessToken.json" );
 
 	public static readonly Dictionary<SslProtocols, string> SslProtocolNames = new() {
 		{ SslProtocols.Tls, "TLSv1.0" },
@@ -57,15 +57,15 @@ public static class Shared {
 	public static void CreateDirectories() {
 
 		// Create the persistent data directory
-		if ( !Directory.Exists( Config.DataDirectory ) ) {
-			Directory.CreateDirectory( Config.DataDirectory );
-			Log.Info( "Created data directory: '{0}'.", Config.DataDirectory );
+		if ( !Directory.Exists( Program.Configuration.DataDirectory ) ) {
+			Directory.CreateDirectory( Program.Configuration.DataDirectory );
+			Log.Info( "Created data directory: '{0}'.", Program.Configuration.DataDirectory );
 		}
 
 		// Create the cache directory
-		if ( !Directory.Exists( Config.CacheDirectory ) ) {
-			Directory.CreateDirectory( Config.CacheDirectory );
-			Log.Info( "Created cache directory: '{0}'.", Config.CacheDirectory );
+		if ( !Directory.Exists( Program.Configuration.CacheDirectory ) ) {
+			Directory.CreateDirectory( Program.Configuration.CacheDirectory );
+			Log.Info( "Created cache directory: '{0}'.", Program.Configuration.CacheDirectory );
 		}
 
 	}

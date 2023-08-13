@@ -13,11 +13,11 @@ public static class Mongo {
 	static Mongo() {
 
 		// Ensure the database configuration properties exist
-		if ( string.IsNullOrEmpty( Config.DatabaseName ) ||
-			string.IsNullOrEmpty( Config.DatabaseServerAddress ) ||
-			Config.DatabaseServerPort < 0 || Config.DatabaseServerPort > 65536 ||
-			string.IsNullOrEmpty( Config.DatabaseUserName ) ||
-			string.IsNullOrEmpty( Config.DatabaseUserPassword )
+		if ( string.IsNullOrWhiteSpace( Program.Configuration.MongoDBDatabaseName ) ||
+			string.IsNullOrWhiteSpace( Program.Configuration.MongoDBServerAddress ) ||
+			Program.Configuration.MongoDBServerPort < 0 || Program.Configuration.MongoDBServerPort > 65536 ||
+			string.IsNullOrWhiteSpace( Program.Configuration.MongoDBUserName ) ||
+			string.IsNullOrWhiteSpace( Program.Configuration.MongoDBUserPassword )
 		) {
 			Log.Error( "One or more of the database configuration properties are not set!" );
 			Environment.Exit( 1 );
@@ -26,10 +26,10 @@ public static class Mongo {
 
 		// Construct the connection URL
 		MongoUrl connectionUrl = new MongoUrlBuilder() {
-			Server = new MongoServerAddress( Config.DatabaseServerAddress, Config.DatabaseServerPort ),
-			Username = Config.DatabaseUserName,
-			Password = Config.DatabaseUserPassword,
-			DatabaseName = Config.DatabaseName,
+			Server = new MongoServerAddress( Program.Configuration.MongoDBServerAddress, Program.Configuration.MongoDBServerPort ),
+			Username = Program.Configuration.MongoDBUserName,
+			Password = Program.Configuration.MongoDBUserPassword,
+			DatabaseName = Program.Configuration.MongoDBDatabaseName,
 			ApplicationName = Assembly.GetExecutingAssembly().GetName().Name,
 			DirectConnection = true
 		}.ToMongoUrl();

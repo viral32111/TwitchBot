@@ -131,13 +131,13 @@ public class Channel {
 	}
 
 	// Sends a chat message, can be as a reply to another message
-	public async Task SendMessage( string message, Message? replyTo = null ) => await Client.SendAsync( viral32111.InternetRelayChat.Command.PrivateMessage,
+	public async Task SendMessage( string message, Message? replyTo = null ) => await Client.SendAsync( new( "PRIVMSG",
 		middle: $"#{Name}",
 		parameters: message,
 		tags: replyTo != null ? new() {
 			{ "reply-parent-msg-id", replyTo.Identifier.ToString() }
 		} : null
-	);
+	) );
 
 	// Fetches a list of streams for this channel
 	public async Task<Stream[]> FetchStreams( int limit = 100 ) {

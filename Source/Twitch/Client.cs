@@ -64,7 +64,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 	public async Task RequestCapabilities( string[] desiredCapabilities ) {
 
 		// Send the capabilities request, and wait for response message(s)
-		viral32111.InternetRelayChat.Message responseMessage = await SendWaitResponseAsync( viral32111.InternetRelayChat.Command.RequestCapabilities, string.Join( ' ', desiredCapabilities ) );
+		viral32111.InternetRelayChat.Message responseMessage = ( await SendWaitResponseAsync( new( "CAP REQ", middle: string.Join( ' ', desiredCapabilities ) ) ) )[ 0 ];
 
 		// Get a list of the granted capabilities from the response message
 		string[]? grantedCapabilities = responseMessage.Parameters?.Split( ' ' );
@@ -167,7 +167,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 			}
 
 		// Did someone send a chat message in a channel?
-		} else if ( !e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.PrivateMessage && e.Message.Middle != null && e.Message.Parameters != null && e.Message.Tags.Count > 0 ) {
+		} else if ( !e.Message.IsFromSystem() && e.Message.Command == "PRIVMSG" && e.Message.Middle != null && e.Message.Parameters != null && e.Message.Tags.Count > 0 ) {
 
 			// Update state for channel, channel user & message
 			Channel channel = State.UpdateChannel( e.Message, this );
@@ -178,7 +178,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 			OnChannelChatMessage?.Invoke( this, message );
 
 		// Has a user (that isn't us) joined a channel's chat?
-		} else if ( !e.Message.IsFromSystem() && e.Message.User != null && e.Message.Command == viral32111.InternetRelayChat.Command.Join && e.Message.Middle != null ) {
+		} else if ( !e.Message.IsFromSystem() && e.Message.User != null && e.Message.Command == "JOIN" && e.Message.Middle != null ) {
 
 			// Find the channel in state
 			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] ) ?? throw new Exception( "Received user join for an unknown channel" );
@@ -191,7 +191,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 			OnGlobalUserJoinChannel?.Invoke( this, globalUser, channel, false );
 
 		// Has a user left a channel's chat?
-		} else if ( !e.Message.IsFromSystem() && e.Message.User != null && e.Message.Command == viral32111.InternetRelayChat.Command.Leave && e.Message.Middle != null ) {
+		} else if ( !e.Message.IsFromSystem() && e.Message.User != null && e.Message.Command == "PART" && e.Message.Middle != null ) {
 
 			// Find the channel in state
 			Channel? channel = State.FindChannelByName( e.Message.Middle[ 1.. ] ) ?? throw new Exception( "Received user leave for an unknown channel" );

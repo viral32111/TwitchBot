@@ -14,7 +14,7 @@ public static class API {
 
 		// Construct the URL
 		string queryString = queryParameters != null ? $"?{queryParameters.ToQueryString()}" : "";
-		Uri targetUrl = new( $"https://{Config.TwitchAPIBaseURL}/{endpoint}{queryString}" );
+		Uri targetUrl = new( $"https://{Program.Configuration.TwitchAPIBaseURL}/{endpoint}{queryString}" );
 
 		// Create the request, defaulting to GET
 		HttpRequestMessage httpRequest = new( method ?? HttpMethod.Get, targetUrl.ToString() );
@@ -23,7 +23,7 @@ public static class API {
 		httpRequest.Headers.Accept.Add( MediaTypeWithQualityHeaderValue.Parse( "application/json" ) );
 
 		// Add the OAuth credentials as headers
-		httpRequest.Headers.Add( "Client-Id", Config.TwitchOAuthIdentifier );
+		httpRequest.Headers.Add( "Client-Id", Program.Configuration.TwitchOAuthClientIdentifier );
 		httpRequest.Headers.Authorization = Shared.UserAccessToken!.GetAuthorizationHeader();
 
 		// Set the request body, if one is provided

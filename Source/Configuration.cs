@@ -149,98 +149,98 @@ public class Configuration {
 	/// https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#authorization-code-grant-flow
 	/// </summary>
 	[ JsonPropertyName( "twitch-oauth-base-url" ) ]
-	public static readonly string TwitchOAuthBaseURL = "https://id.twitch.tv/oauth2";
+	public readonly string TwitchOAuthBaseURL = "https://id.twitch.tv/oauth2";
 
 	/// <summary>
 	/// The client identifier of the Twitch OAuth application.
 	/// https://dev.twitch.tv/docs/authentication/register-app/
 	/// </summary>
 	[ JsonPropertyName( "twitch-oauth-client-identifier" ) ]
-	public static readonly string TwitchOAuthClientIdentifier = "";
+	public readonly string TwitchOAuthClientIdentifier = "";
 
 	/// <summary>
 	/// The client secret of the Twitch OAuth application.
 	/// https://dev.twitch.tv/docs/authentication/register-app/
 	/// </summary>
 	[ JsonPropertyName( "twitch-oauth-client-secret" ) ]
-	public static readonly string TwitchOAuthClientSecret = "";
+	public readonly string TwitchOAuthClientSecret = "";
 
 	/// <summary>
 	/// The redirect URL of the Twitch OAuth application.
 	/// https://dev.twitch.tv/docs/authentication/register-app/
 	/// </summary>
 	[ JsonPropertyName( "twitch-oauth-redirect-url" ) ]
-	public static readonly string TwitchOAuthRedirectURL = "https://example.com/my-redirect-handler";
+	public readonly string TwitchOAuthRedirectURL = "https://example.com/my-redirect-handler";
 
 	/// <summary>
 	/// The scopes to request on behalf of the Twitch OAuth application.
 	/// https://dev.twitch.tv/docs/authentication/scopes/
 	/// </summary>
 	[ JsonPropertyName( "twitch-oauth-scopes" ) ]
-	public static readonly string[] TwitchOAuthScopes = new[] { "chat:read", "chat:edit" };
+	public readonly string[] TwitchOAuthScopes = new[] { "chat:read", "chat:edit" };
 
 	/// <summary>
 	/// The IP address of the Twitch chat IRC server.
 	/// https://dev.twitch.tv/docs/irc/#connecting-to-the-twitch-irc-server
 	/// </summary>
 	[ JsonPropertyName( "twitch-chat-address" ) ]
-	public static readonly string TwitchChatAddress = "irc.chat.twitch.tv";
+	public readonly string TwitchChatAddress = "irc.chat.twitch.tv";
 
 	/// <summary>
 	/// The port number of the Twitch chat IRC server.
 	/// https://dev.twitch.tv/docs/irc/#connecting-to-the-twitch-irc-server
 	/// </summary>
 	[ JsonPropertyName( "twitch-chat-port" ) ]
-	public static readonly int TwitchChatPort = 6697;
+	public readonly int TwitchChatPort = 6697;
 
 	/// <summary>
 	/// The identifier of the primary Twitch channel.
 	/// </summary>
 	[ JsonPropertyName( "twitch-primary-channel-identifier" ) ]
-	public static readonly int TwitchPrimaryChannelIdentifier = 127154290;
+	public readonly int TwitchPrimaryChannelIdentifier = 127154290;
 
 	/// <summary>
 	/// The base URL of the Twitch API.
 	/// https://dev.twitch.tv/docs/api/
 	/// </summary>
 	[ JsonPropertyName( "twitch-api-base-url" ) ]
-	public static readonly string TwitchAPIBaseURL = "https://api.twitch.tv/helix";
+	public readonly string TwitchAPIBaseURL = "https://api.twitch.tv/helix";
 
 	/// <summary>
 	/// The URL of the Twitch EventSub WebSocket.
 	/// https://dev.twitch.tv/docs/eventsub/handling-websocket-events/
 	/// </summary>
 	[ JsonPropertyName( "twitch-events-websocket-url" ) ]
-	public static readonly string TwitchEventsWebSocketURL = "wss://eventsub.wss.twitch.tv/ws";
+	public readonly string TwitchEventsWebSocketURL = "wss://eventsub.wss.twitch.tv/ws";
 
 	/// <summary>
 	/// The IP address of the MongoDB server.
 	/// </summary>
 	[ JsonPropertyName( "mongodb-server-address" ) ]
-	public static readonly string MongoDBServerAddress = "127.0.0.1";
+	public readonly string MongoDBServerAddress = "127.0.0.1";
 
 	/// <summary>
 	/// The port number of the MongoDB server.
 	/// </summary>
 	[ JsonPropertyName( "mongodb-server-port" ) ]
-	public static readonly int MongoDBServerPort = 27017;
+	public readonly int MongoDBServerPort = 27017;
 
 	/// <summary>
 	/// The username of the MongoDB user.
 	/// </summary>
 	[ JsonPropertyName( "mongodb-user-name" ) ]
-	public static readonly string MongoDBUserName = "";
+	public readonly string MongoDBUserName = "";
 
 	/// <summary>
 	/// The password of the MongoDB user.
 	/// </summary>
 	[ JsonPropertyName( "mongodb-user-password" ) ]
-	public static readonly string MongoDBUserPassword = "";
+	public readonly string MongoDBUserPassword = "";
 
 	/// <summary>
 	/// The name of the MongoDB database.
 	/// </summary>
 	[ JsonPropertyName( "mongodb-database-name" ) ]
-	public static readonly string MongoDBDatabaseName = "twitch-bot";
+	public readonly string MongoDBDatabaseName = "twitch-bot";
 
 }
