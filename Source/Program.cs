@@ -37,7 +37,7 @@ public class Program {
 
 		// Display application name and version
 		AssemblyName assemblyName = Assembly.GetExecutingAssembly().GetName();
-		Log.Info( "Running version {1}.{2}.{3}.", assemblyName.Version?.Major, assemblyName.Version?.Minor, assemblyName.Version?.Build );
+		Log.Info( "Running version {0}.{1}.{2}.", assemblyName.Version?.Major, assemblyName.Version?.Minor, assemblyName.Version?.Build );
 
 		// Display directory paths for convenience
 		Log.Info( "Data directory is: '{0}'.", Configuration.DataDirectory );

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
