@@ -26,10 +26,11 @@ namespace TwitchBot.Twitch;
 public class Client : viral32111.InternetRelayChat.Client {
 
 	// Regular expression for matching the "Your Host" command
-	private readonly Regex hostPattern = new( @"^Your host is (?'host'.+)$" );
+	protected readonly Regex hostPattern = new( @"^Your host is (?'host'.+)$" );
 
 	// Ourselves
 	public GlobalUser? User;
+	protected string ExpectedHost = "irc.chat.twitch.tv";
 
 	// Event that runs after the client is ready
 	public delegate Task OnReadyHandler( Client client, GlobalUser user );
@@ -64,7 +65,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 	public async Task RequestCapabilities( string[] desiredCapabilities ) {
 
 		// Send the capabilities request, and wait for response message(s)
-		viral32111.InternetRelayChat.Message responseMessage = ( await SendWaitResponseAsync( new( "CAP REQ", middle: string.Join( ' ', desiredCapabilities ) ) ) )[ 0 ];
+		viral32111.InternetRelayChat.Message responseMessage = ( await SendWaitResponseAsync( new( Command.RequestCapabilities, middle: string.Join( ' ', desiredCapabilities ) ) ) )[ 0 ];
 
 		// Get a list of the granted capabilities from the response message
 		string[]? grantedCapabilities = responseMessage.Parameters?.Split( ' ' );
@@ -83,7 +84,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 		viral32111.InternetRelayChat.Message? responseMessage = ( await SendWaitResponseAsync( new viral32111.InternetRelayChat.Message( viral32111.InternetRelayChat.Command.Nick, parameters: accountName ) ) )[ 0 ];
 
 		// Check the response to see if authentication was successful or failed
-		if ( responseMessage.IsFromSystem() && responseMessage.Command == viral32111.InternetRelayChat.Command.Welcome ) return true;
+		if ( responseMessage.IsFromSystem() && responseMessage.Command == Command.Welcome ) return true;
 		else if ( responseMessage.IsFromSystem() && responseMessage.Command == Command.Notice && responseMessage.Parameters == "Login authentication failed" ) return false;
 		else throw new Exception( "Authentication response IRC message was neither successful or a failure" );
 
@@ -93,15 +94,15 @@ public class Client : viral32111.InternetRelayChat.Client {
 	public async Task<bool> JoinChannel( Channel channel ) {
 
 		// IRC channels are prefixed with a hashtag
-		string channelName = $"#{channel.Name}";
+		string channelName = $"#{ channel.Name }";
 
 		// Request to join this channel & wait for a response
-		viral32111.InternetRelayChat.Message responseMessage = await SendWaitResponseAsync( viral32111.InternetRelayChat.Command.Join, middle: channelName );
+		viral32111.InternetRelayChat.Message responseMessage = ( await SendWaitResponseAsync( new( Command.Join, middle: channelName ) ) )[ 0 ];
 
 		// Fire the channel join event if this message is for us, is about a join, and is for the channel we wanted to join
-		if ( responseMessage.IsAboutUser( User!.LoginName ) && responseMessage.Command == viral32111.InternetRelayChat.Command.Join && responseMessage.Middle == channelName ) {
-			// NOTE: Don't need to update global user or channel state here because this IRC message doesn't contain anything useful
+		if ( responseMessage.IsAboutUser( User!.LoginName ) && responseMessage.Command == Command.Join && responseMessage.Middle == channelName ) {
 			OnGlobalUserJoinChannel?.Invoke( this, User!, channel, true );
+			// NOTE: Don't need to update global user or channel state here because this IRC message doesGAMn't contain anything useful
 			return true;
 		} else {
 			return false;
@@ -113,7 +114,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 	private async void ProcessMessage( object sender, MessagedEventArgs e ) {
 
 		// Are we being told our host?
-		if ( e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.YourHost && e.Message.Parameters != null ) {
+		if ( e.Message.IsFromSystem() && e.Message.Command == Command.YourHost && e.Message.Parameters != null ) {
 
 			// Run regular expression match on parameters to extract the hostname
 			Match hostMatch = hostPattern.Match( e.Message.Parameters );
@@ -124,7 +125,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 			Log.Info( "The expected host is now: '{0}'", ExpectedHost );
 
 		// One day this might change, so let's display it...
-		} else if ( e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.MoTD && e.Message.Parameters != null ) {
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == Command.MoTD && e.Message.Parameters != null ) {
 			Log.Info( "MoTD: '{0}'", e.Message.Parameters );
 
 		// Update ourselves in state & fire the ready event, if we are being informed about our global self
@@ -142,7 +143,7 @@ public class Client : viral32111.InternetRelayChat.Client {
 			OnChannelUserUpdate?.Invoke( this, State.UpdateChannelUser( e.Message, channel ) );
 
 		// Are we being informed about the users in a channel we just joined?
-		} else if ( e.Message.IsFromSystem() && e.Message.Command == viral32111.InternetRelayChat.Command.Names && e.Message.Middle != null && e.Message.Parameters != null ) {
+		} else if ( e.Message.IsFromSystem() && e.Message.Command == Command.Names && e.Message.Middle != null && e.Message.Parameters != null ) {
 
 			// Find the channel in state
 			Channel? channel = State.FindChannelByName( e.Message.Middle[ ( e.Message.Middle.LastIndexOf( '#' ) + 1 ).. ] );

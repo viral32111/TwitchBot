@@ -35,8 +35,6 @@ public class Configuration {
 	/// <param name="linuxDirectoryName">The name of the directory on Linux.</param>
 	/// <returns>The path to the user's configuration file.</returns>
 	/// <exception cref="PlatformNotSupportedException">Thrown if the operating system is not handled.</exception>
-	[ SupportedOSPlatform( "windows" ) ]
-	[ SupportedOSPlatform( "linux" ) ]
 	public static string GetUserPath( string fileName, string windowsDirectoryName, string linuxDirectoryName ) {
 		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
 			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), windowsDirectoryName, fileName );
@@ -55,8 +53,6 @@ public class Configuration {
 	/// <param name="linuxDirectoryName">The name of the directory on Linux.</param>
 	/// <returns>The path to the system configuration file.</returns>
 	/// <exception cref="PlatformNotSupportedException">Thrown if the operating system is not handled.</exception>
-	[ SupportedOSPlatform( "windows" ) ]
-	[ SupportedOSPlatform( "linux" ) ]
 	public static string GetSystemPath( string fileName, string windowsDirectoryName, string linuxDirectoryName ) {
 		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
 			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.CommonApplicationData ), windowsDirectoryName, fileName );

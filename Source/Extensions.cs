@@ -97,8 +97,14 @@ public static class Extensions {
 	}
 
 	// https://stackoverflow.com/a/67269183
-	public static IEnumerable<T> NotNull<T>( this IEnumerable<T?> enumerable ) {
-		return enumerable.Where( element => element != null ).Select( element => element! );
-	}
+	public static IEnumerable<T> NotNull<T>( this IEnumerable<T?> enumerable ) =>
+		enumerable.Where( element => element != null ).Select( element => element! );
+
+	// Temporary - https://github.com/viral32111/TwitchBot/blob/5fdd212f11237fd4d966c5d15d8468a17da11201/Source/InternetRelayChat/Message.cs
+	public static bool IsFromSystem( this viral32111.InternetRelayChat.Message message ) =>
+		message.Nick == null && message.User == null && message.Host != null;
+	public static bool IsAboutUser( this viral32111.InternetRelayChat.Message message, string userName ) =>
+		message.Nick == userName && message.User == userName && message.Host != null && message.Host.StartsWith( userName );
+
 
 }
