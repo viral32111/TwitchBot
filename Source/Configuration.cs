@@ -1,9 +1,13 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace TwitchBot;
 
@@ -25,24 +29,6 @@ public class Configuration {
 	public bool IsLoaded { get; private set; } = false;
 
 	/// <summary>
-	/// Gets the path to the user's configuration file.
-	/// On Windows, it is %LOCALAPPDATA%\TwitchBot\config.json.
-	/// On Linux, it is ~/.config/twitch-bot/config.json.
-	/// </summary>
-	/// <param name="fileName">The name of the configuration file.</param>
-	/// <param name="windowsDirectoryName">The name of the directory on Windows.</param>
-	/// <param name="linuxDirectoryName">The name of the directory on Linux.</param>
-	/// <returns>The path to the user's configuration file.</returns>
-	/// <exception cref="PlatformNotSupportedException">Thrown if the operating system is not handled.</exception>
-	public static string GetUserPath( string fileName, string windowsDirectoryName, string linuxDirectoryName ) {
-		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
-			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), windowsDirectoryName, fileName );
-		} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
-			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), linuxDirectoryName, fileName );
-		} else throw new PlatformNotSupportedException( "Unhandled operating system" );
-	}
-
-	/// <summary>
 	/// Gets the path to the system configuration file.
 	/// On Windows, it is: C:\ProgramData\TwitchBot\config.json.
 	/// On Linux, it is: /etc/twitch-bot/config.json.
@@ -61,6 +47,24 @@ public class Configuration {
 	}
 
 	/// <summary>
+	/// Gets the path to the user's configuration file.
+	/// On Windows, it is %LOCALAPPDATA%\TwitchBot\config.json.
+	/// On Linux, it is ~/.config/twitch-bot/config.json.
+	/// </summary>
+	/// <param name="fileName">The name of the configuration file.</param>
+	/// <param name="windowsDirectoryName">The name of the directory on Windows.</param>
+	/// <param name="linuxDirectoryName">The name of the directory on Linux.</param>
+	/// <returns>The path to the user's configuration file.</returns>
+	/// <exception cref="PlatformNotSupportedException">Thrown if the operating system is not handled.</exception>
+	public static string GetUserPath( string fileName, string windowsDirectoryName, string linuxDirectoryName ) {
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), windowsDirectoryName, fileName );
+		} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), linuxDirectoryName, fileName );
+		} else throw new PlatformNotSupportedException( "Unhandled operating system" );
+	}
+
+	/// <summary>
 	/// Loads the configuration from all sources.
 	/// The priority is: System Configuration File -> User Configuration File -> Project Configuration File -> Environment Variables.
 	/// </summary>
@@ -75,16 +79,86 @@ public class Configuration {
 		string linuxDirectoryName = linuxDirectoryName,
 		string environmentVariablePrefix = environmentVariablePrefix
 	) {
+		string systemPath = GetSystemPath( fileName, windowsDirectoryName, linuxDirectoryName );
+		string userPath = GetUserPath( fileName, windowsDirectoryName, linuxDirectoryName );
+		string developmentPath = Path.Combine( Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location ) ?? Environment.CurrentDirectory, fileName );
+		Program.Logger.LogInformation( "The system configuration file path is '{0}'.", systemPath );
+		Program.Logger.LogInformation( "The user configuration file path is '{0}'.", userPath );
+		Program.Logger.LogDebug( "The development configuration file path is '{0}'.", developmentPath );
+
 		IConfigurationRoot root = new ConfigurationBuilder()
-			.AddJsonFile( GetSystemPath( fileName, windowsDirectoryName, linuxDirectoryName ), true, false )
-			.AddJsonFile( GetUserPath( fileName, windowsDirectoryName, linuxDirectoryName ), true, false )
+			.AddJsonFile( systemPath, true, false )
+			.AddJsonFile( userPath, true, false )
+			#if DEBUG
+			.AddJsonFile( developmentPath, true, false ) // Useful for development
+			#endif
 			.AddEnvironmentVariables( environmentVariablePrefix )
 			.Build();
 
 		Configuration configuration = root.Get<Configuration>() ?? throw new LoadException( "Failed to load configuration, are there malformed/missing properties?" );
 		configuration.IsLoaded = true;
+		Program.Logger.LogInformation( "Loaded configuration from {0} provider(s).", root.Providers.Count() );
+
+		Program.Logger.LogDebug( configuration.TwitchOAuthClientIdentifier );
+		Program.Logger.LogDebug( configuration.TwitchOAuthClientSecret );
 
 		return configuration;
+	}
+
+	/// <summary>
+	/// Gets the default system directory where persistent data should be stored.
+	/// On Windows, it is: C:\ProgramData\TwitchBot\data.
+	/// On Linux, it is: /var/lib/twitch-bot.
+	/// </summary>
+	/// <returns>The path to a directory where persistent data should be stored.</returns>
+	public static string GetSystemDataPath() {
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.CommonApplicationData ), windowsDirectoryName, "data" );
+		} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), linuxDirectoryName, "data" );
+		} else return Path.Combine( Environment.CurrentDirectory, "data" );
+	}
+
+	/// <summary>
+	/// Gets the user's default directory where persistent data should be stored.
+	/// On Windows, it is: %LOCALAPPDATA%\TwitchBot\data.
+	/// On Linux, it is: ~/.local/twitch-bot.
+	/// </summary>
+	/// <returns>The path to a directory where persistent data should be stored.</returns>
+	public static string GetUserDataPath() {
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), windowsDirectoryName, "data" );
+		} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), ".local", linuxDirectoryName );
+		} else return Path.Combine( Environment.CurrentDirectory, "data" );
+	}
+
+	/// <summary>
+	/// Gets the default system directory where volatile cache should be stored.
+	/// On Windows, it is: %TEMP%\TwitchBot.
+	/// On Linux, it is: /tmp/twitch-bot.
+	/// </summary>
+	/// <returns>The path to a directory where volatile cache should be stored.</returns>
+	public static string GetSystemCachePath() {
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
+			return Path.Combine( Path.GetTempPath(), windowsDirectoryName );
+		} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
+			return Path.Combine( "/tmp", linuxDirectoryName ); // No enumeration for /tmp
+		} else return Path.Combine( Environment.CurrentDirectory, "cache" );
+	}
+
+	/// <summary>
+	/// Gets the user's default directory where volatile cache should be stored.
+	/// On Windows, it is: %TEMP%\TwitchBot.
+	/// On Linux, it is: ~/.cache/twitch-bot.
+	/// </summary>
+	/// <returns>The path to a directory where volatile cache should be stored.</returns>
+	public static string GetUserCachePath() {
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
+			return Path.Combine( Path.GetTempPath(), windowsDirectoryName );
+		} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
+			return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), ".cache", linuxDirectoryName );
+		} else return Path.Combine( Environment.CurrentDirectory, "cache" );
 	}
 
 	/// <summary>
@@ -101,43 +175,15 @@ public class Configuration {
 
 	/// <summary>
 	/// The directory where persistent data is stored, such as OAuth tokens.
-	/// On Windows, it should be: C:\ProgramData\TwitchBot\data, or: %LOCALAPPDATA%\TwitchBot\data.
-	/// On Linux, it is: /var/lib/twitch-bot, or: ~/.local/twitch-bot.
 	/// </summary>
 	[ JsonPropertyName( "data-directory" ) ]
-	public string DataDirectory {
-		get {
-			if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
-				return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.CommonApplicationData ), windowsDirectoryName, "data" );
-			} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
-				return Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), linuxDirectoryName, "data" );
-			} else return Path.Combine( Environment.CurrentDirectory, "data" );
-		}
-
-		private set {
-			DataDirectory = value;
-		}
-	}
+	public readonly string DataDirectory = GetUserDataPath();
 
 	/// <summary>
 	/// The directory where volatile cache is stored, such as bot state.
-	/// On Windows, it should be: %TEMP%\TwitchBot.
-	/// On Linux, it should: /tmp/twitch-bot.
 	/// </summary>
 	[ JsonPropertyName( "cache-directory" ) ]
-	public string CacheDirectory {
-		get {
-			if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) ) {
-				return Path.Combine( Path.GetTempPath(), windowsDirectoryName );
-			} else if ( RuntimeInformation.IsOSPlatform( OSPlatform.Linux ) ) {
-				return Path.Combine( "/tmp", linuxDirectoryName ); // No enumeration for /tmp
-			} else return Path.Combine( Environment.CurrentDirectory, "cache" );
-		}
-
-		private set {
-			DataDirectory = value;
-		}
-	}
+	public readonly string CacheDirectory = GetUserCachePath();
 
 	/// <summary>
 	/// The base URL of the Twitch OAuth API.

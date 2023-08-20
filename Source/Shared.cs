@@ -9,6 +9,8 @@ using System.Security.Cryptography;
 
 using TwitchBot.Twitch.OAuth;
 
+using Microsoft.Extensions.Logging;
+
 namespace TwitchBot;
 
 public static class Shared {
@@ -59,13 +61,13 @@ public static class Shared {
 		// Create the persistent data directory
 		if ( !Directory.Exists( Program.Configuration.DataDirectory ) ) {
 			Directory.CreateDirectory( Program.Configuration.DataDirectory );
-			Log.Info( "Created data directory: '{0}'.", Program.Configuration.DataDirectory );
+			Program.Logger.LogInformation( "Created data directory '{0}'.", Program.Configuration.DataDirectory );
 		}
 
 		// Create the cache directory
 		if ( !Directory.Exists( Program.Configuration.CacheDirectory ) ) {
 			Directory.CreateDirectory( Program.Configuration.CacheDirectory );
-			Log.Info( "Created cache directory: '{0}'.", Program.Configuration.CacheDirectory );
+			Program.Logger.LogInformation( "Created cache directory '{0}'.", Program.Configuration.CacheDirectory );
 		}
 
 	}
