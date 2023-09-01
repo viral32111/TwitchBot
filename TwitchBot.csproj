@@ -33,7 +33,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.20.0" />
+		<PackageReference Include="MongoDB.Driver" Version="2.21.0" />
 		<PackageReference Include="MySql.Data" Version="8.1.0" />
 		<PackageReference Include="StackExchange.Redis" Version="2.6.122" />
 		<PackageReference Include="viral32111.JsonExtensions" Version="1.0.0" />
