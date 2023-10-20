@@ -8,7 +8,7 @@ on:
       - 'TwitchBot.sln'
       - 'Dockerfile'
       - '.dockerignore'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/*.yml'
     branches:
       - '**'
     tags:
