@@ -20,3 +20,7 @@ SECURITY.md
 # Project
 TwitchBot.csproj
 TwitchBot.sln
+
+# Configuration
+twitch-bot.json
+config.json
